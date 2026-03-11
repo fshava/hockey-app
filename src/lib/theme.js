@@ -147,4 +147,60 @@ export const globalCss = `
   .scorer-bar-wrap { display: flex; align-items: center; gap: 8px; }
   .scorer-bar-bg { flex: 1; height: 6px; background: rgba(255,255,255,0.1); border-radius: 3px; overflow: hidden; }
   .scorer-bar-fill { height: 100%; border-radius: 3px; transition: width 0.4s; }
+
+  /* ── Mobile responsive ─────────────────────────────── */
+  @media (max-width: 768px) {
+    .app-header { padding: 10px 14px; gap: 10px; }
+    .app-header h1 { font-size: 1.3rem; }
+    .app-header .sub { font-size: 0.68rem; }
+    .user-pill { font-size: 0.72rem; padding: 4px 10px; max-width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .nav-bar { padding: 0 10px; gap: 0; }
+    .nav-link { font-size: 0.78rem; padding: 9px 10px; letter-spacing: 0.04em; }
+    .nav-label { display: none; }
+    .nav-sep { display: none; }
+
+    .page { padding: 16px 12px; }
+    .section-title { font-size: 1.3rem; }
+
+    .grid2 { grid-template-columns: 1fr; }
+    .grid3 { grid-template-columns: 1fr 1fr; gap: 10px; }
+
+    .stat-num { font-size: 1.8rem; }
+    .stat-box { padding: 12px 10px; }
+
+    .class-tab { font-size: 0.78rem; padding: 5px 11px; }
+
+    /* League table – hide less important cols, allow scroll */
+    .league-table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; border-radius: 8px; }
+    .league-table th, .league-table td { padding: 8px 7px; font-size: 0.78rem; }
+    .league-table .hide-mobile { display: none; }
+
+    /* Leaderboard */
+    .leaderboard-row { grid-template-columns: 36px 1fr 60px !important; }
+    .leaderboard-bar { display: none !important; }
+
+    /* Fixture rows */
+    .fixture-row-admin { grid-template-columns: 1fr !important; gap: 6px !important; }
+    .fixture-row-admin .vs-label { display: none; }
+
+    /* Results page score row */
+    .result-score-row { grid-template-columns: 1fr auto !important; }
+    .result-score-inner { display: flex; gap: 6px; align-items: center; justify-content: flex-end; }
+
+    /* PDF export bar */
+    .pdf-export-bar { flex-direction: column; align-items: flex-start !important; gap: 8px !important; }
+    .pdf-export-bar select { width: 100% !important; max-width: 100% !important; }
+
+    .btn { font-size: 0.82rem; padding: 8px 14px; }
+    .btn-sm { font-size: 0.74rem; padding: 5px 10px; }
+
+    .card { padding: 14px; }
+  }
+
+  @media (max-width: 480px) {
+    .grid3 { grid-template-columns: 1fr; }
+    .app-header h1 { font-size: 1.1rem; }
+    .nav-link { font-size: 0.72rem; padding: 8px 7px; }
+    .section-title { font-size: 1.1rem; }
+  }
 `

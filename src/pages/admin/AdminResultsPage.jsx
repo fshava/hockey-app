@@ -74,7 +74,7 @@ export default function AdminResultsPage() {
     <div className="page">
       <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 20, flexWrap: 'wrap' }}>
         <div>
-          <div className="section-title">🏑 Results Entry</div>
+          <div className="section-title">⚽ Results Entry</div>
           <div className="section-sub">Enter scores and goal scorers</div>
         </div>
         <div style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
@@ -96,61 +96,69 @@ export default function AdminResultsPage() {
             <div key={f.id} style={{ marginBottom: 8 }}>
               {/* Score row */}
               <div style={{
-                display: 'grid', gridTemplateColumns: '1fr 56px 28px 56px auto 80px',
-                gap: 8, alignItems: 'center',
+                display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center',
                 padding: '10px 16px', borderRadius: expanded === f.id ? '6px 6px 0 0' : 6,
                 background: G.pitchLight,
                 borderLeft: `3px solid ${played ? color : 'rgba(255,255,255,0.15)'}`,
               }}>
-                <div>
-                  <div style={{ fontWeight: 700, color: G.white, fontSize: '0.88rem' }}>{f.home_team} <span style={{ color: G.muted, fontWeight: 400, fontSize: '0.75rem' }}>vs</span> {f.away_team}</div>
+                {/* Match label */}
+                <div style={{ flex: '1 1 160px', minWidth: 0 }}>
+                  <div style={{ fontWeight: 700, color: G.white, fontSize: '0.88rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    {f.home_team} <span style={{ color: G.muted, fontWeight: 400, fontSize: '0.75rem' }}>vs</span> {f.away_team}
+                  </div>
                   <div style={{ fontSize: '0.72rem', color: G.muted, marginTop: 1 }}>
                     {venue ? venue.name + ' · ' : ''}{f.match_date || 'No date'}{f.match_time ? ' · ' + f.match_time.slice(0, 5) : ''}
                   </div>
                 </div>
-                <input
-                  type="number" min="0" max="99"
-                  placeholder="—"
-                  value={f.home_goals ?? ''}
-                  onChange={e => handleScoreChange(f.id, 'home_goals', e.target.value)}
-                  style={{
-                    width: 56, textAlign: 'center', fontFamily: "'Barlow Condensed'",
-                    fontSize: '1.3rem', fontWeight: 800, padding: '5px 4px',
-                    background: 'rgba(0,0,0,0.25)', border: `1.5px solid ${color}44`, color: G.white, borderRadius: 4,
-                  }}
-                />
-                <span style={{ textAlign: 'center', color: G.muted, fontFamily: "'Barlow Condensed'", fontWeight: 800 }}>:</span>
-                <input
-                  type="number" min="0" max="99"
-                  placeholder="—"
-                  value={f.away_goals ?? ''}
-                  onChange={e => handleScoreChange(f.id, 'away_goals', e.target.value)}
-                  style={{
-                    width: 56, textAlign: 'center', fontFamily: "'Barlow Condensed'",
-                    fontSize: '1.3rem', fontWeight: 800, padding: '5px 4px',
-                    background: 'rgba(0,0,0,0.25)', border: `1.5px solid ${color}44`, color: G.white, borderRadius: 4,
-                  }}
-                />
-                <span
-                  onClick={() => toggleExpand(f.id)}
-                  style={{
-                    cursor: 'pointer', fontSize: '0.72rem', fontWeight: 700, color,
-                    border: `1px solid ${color}44`, borderRadius: 3, padding: '4px 8px',
-                    userSelect: 'none', whiteSpace: 'nowrap',
-                  }}
-                >
-                  ⚽ Scorers {fScorers.length > 0 ? `(${fScorers.length})` : '+'}
-                </span>
-                {played && (
-                  <button
-                    className="btn btn-sm btn-primary"
-                    onClick={() => handleSaveResult(f)}
-                    disabled={saving[f.id]}
-                    style={{ justifyContent: 'center' }}
+                {/* Score inputs */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                  <input
+                    type="number" min="0" max="99"
+                    placeholder="—"
+                    value={f.home_goals ?? ''}
+                    onChange={e => handleScoreChange(f.id, 'home_goals', e.target.value)}
+                    style={{
+                      width: 52, textAlign: 'center', fontFamily: "'Barlow Condensed'",
+                      fontSize: '1.3rem', fontWeight: 800, padding: '5px 4px',
+                      background: 'rgba(0,0,0,0.25)', border: `1.5px solid ${color}44`, color: G.white, borderRadius: 4,
+                    }}
+                  />
+                  <span style={{ color: G.muted, fontFamily: "'Barlow Condensed'", fontWeight: 800, padding: '0 2px' }}>:</span>
+                  <input
+                    type="number" min="0" max="99"
+                    placeholder="—"
+                    value={f.away_goals ?? ''}
+                    onChange={e => handleScoreChange(f.id, 'away_goals', e.target.value)}
+                    style={{
+                      width: 52, textAlign: 'center', fontFamily: "'Barlow Condensed'",
+                      fontSize: '1.3rem', fontWeight: 800, padding: '5px 4px',
+                      background: 'rgba(0,0,0,0.25)', border: `1.5px solid ${color}44`, color: G.white, borderRadius: 4,
+                    }}
+                  />
+                </div>
+                {/* Action buttons */}
+                <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                  <span
+                    onClick={() => toggleExpand(f.id)}
+                    style={{
+                      cursor: 'pointer', fontSize: '0.72rem', fontWeight: 700, color,
+                      border: `1px solid ${color}44`, borderRadius: 3, padding: '5px 9px',
+                      userSelect: 'none', whiteSpace: 'nowrap',
+                    }}
                   >
-                    {saving[f.id] ? '…' : '💾 Save'}
-                  </button>
-                )}
+                    ⚽ {fScorers.length > 0 ? `(${fScorers.length})` : '+'}
+                  </span>
+                  {played && (
+                    <button
+                      className="btn btn-sm btn-primary"
+                      onClick={() => handleSaveResult(f)}
+                      disabled={saving[f.id]}
+                      style={{ justifyContent: 'center' }}
+                    >
+                      {saving[f.id] ? '…' : '💾 Save'}
+                    </button>
+                  )}
+                </div>
               </div>
 
               {/* Scorer panel */}

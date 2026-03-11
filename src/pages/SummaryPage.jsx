@@ -51,7 +51,7 @@ export default function SummaryPage() {
 
       {/* ── Team PDF Export ── */}
       {clsTeams.length > 0 && (
-        <div style={{
+        <div className="pdf-export-bar" style={{
           background: G.pitchLight, borderRadius: 8, padding: '14px 18px',
           marginBottom: 20, display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap',
           borderLeft: `3px solid ${color}`,
@@ -72,7 +72,7 @@ export default function SummaryPage() {
           )}
           {selectedTeam && (
             <span style={{ fontSize: '0.75rem', color: G.muted }}>
-              Includes all fixtures, results & goal scorers for {selectedTeam}
+              Includes fixtures, results & standings for {selectedTeam}
             </span>
           )}
         </div>

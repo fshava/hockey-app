@@ -55,16 +55,21 @@ export default function StandingsPage() {
       {standings.length === 0 ? (
         <div className="alert alert-info">No data yet for this class.</div>
       ) : (
-        <div style={{ background: G.pitchLight, borderRadius: 8, overflow: 'hidden', boxShadow: '0 4px 20px rgba(0,0,0,0.3)' }}>
+        <div className="league-table-wrap" style={{ background: G.pitchLight, borderRadius: 8, boxShadow: '0 4px 20px rgba(0,0,0,0.3)' }}>
           <table className="league-table">
             <thead>
               <tr>
                 <th style={{ color }}>#</th>
                 <th className="left" style={{ color }}>Team</th>
-                <th>P</th><th>W</th><th>D</th><th>L</th>
-                <th>GF</th><th>GA</th><th>GD</th>
+                <th>P</th>
+                <th>W</th>
+                <th className="hide-mobile">D</th>
+                <th className="hide-mobile">L</th>
+                <th className="hide-mobile">GF</th>
+                <th className="hide-mobile">GA</th>
+                <th>GD</th>
                 <th style={{ color }}>Pts</th>
-                <th>Form</th>
+                <th className="hide-mobile">Form</th>
               </tr>
             </thead>
             <tbody>
@@ -78,15 +83,15 @@ export default function StandingsPage() {
                     <td className="left">{row.name}</td>
                     <td style={{ color: G.muted }}>{row.P}</td>
                     <td style={{ color: G.lime }}>{row.W}</td>
-                    <td style={{ color: G.muted }}>{row.D}</td>
-                    <td style={{ color: G.danger }}>{row.L}</td>
-                    <td>{row.GF}</td>
-                    <td>{row.GA}</td>
+                    <td className="hide-mobile" style={{ color: G.muted }}>{row.D}</td>
+                    <td className="hide-mobile" style={{ color: G.danger }}>{row.L}</td>
+                    <td className="hide-mobile">{row.GF}</td>
+                    <td className="hide-mobile">{row.GA}</td>
                     <td style={{ color: row.GD > 0 ? G.lime : row.GD < 0 ? G.danger : G.muted, fontWeight: 700 }}>
                       {row.GD > 0 ? '+' : ''}{row.GD}
                     </td>
                     <td style={{ fontFamily: "'Barlow Condensed'", fontWeight: 800, fontSize: '1.1rem', color }}>{row.Pts}</td>
-                    <td>
+                    <td className="hide-mobile">
                       <div style={{ display: 'flex', gap: 2, justifyContent: 'center' }}>
                         {row.form.slice(-5).length === 0
                           ? <span style={{ color: G.muted, fontSize: '0.72rem' }}>—</span>

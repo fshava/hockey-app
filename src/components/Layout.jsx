@@ -8,6 +8,7 @@ const css = `
     border-bottom: 3px solid ${G.lime};
     padding: 14px 24px;
     display: flex; align-items: center; gap: 16px;
+    flex-wrap: wrap;
   }
   .app-header h1 {
     font-family: 'Barlow Condensed', sans-serif;
@@ -62,7 +63,7 @@ const ADMIN_LINKS = [
   { to: '/admin/venues', label: '🏟 Venues' },
   { to: '/admin/players', label: '👤 Players' },
   { to: '/admin/fixtures', label: '📝 Fixtures' },
-  { to: '/admin/results', label: '🏑 Results' },
+  { to: '/admin/results', label: '⚽ Results' },
 ]
 
 export default function Layout({ children }) {
@@ -85,8 +86,8 @@ export default function Layout({ children }) {
         <div className="app-header">
           <span style={{ fontSize: '2rem' }}>🏑</span>
           <div>
-            <div className="sub">Southern Region Schools Hockey</div>
-            <h1><Link to="/">Fixtures & Results</Link></h1>
+            <div className="sub">School Sport</div>
+            <h1><Link to="/">Hockey Fixtures</Link></h1>
           </div>
           <div className="header-right">
             {session ? (

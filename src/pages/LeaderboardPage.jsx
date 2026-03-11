@@ -61,7 +61,7 @@ export default function LeaderboardPage() {
             const barColor   = idx === 0 ? '#ffd700' : color
             const pct        = Math.round((s.goals / maxGoals) * 100)
             return (
-              <div key={`${s.playerName}-${s.team}`} style={{
+              <div key={`${s.playerName}-${s.team}`} className="leaderboard-row" style={{
                 display: 'grid', gridTemplateColumns: '44px 1fr 180px 70px',
                 gap: 12, alignItems: 'center',
                 padding: '13px 20px',
@@ -75,7 +75,7 @@ export default function LeaderboardPage() {
                   <div style={{ fontWeight: 700, color: G.white, fontSize: '0.95rem' }}>{s.playerName}</div>
                   <div style={{ fontSize: '0.76rem', color: G.muted }}>{s.team}</div>
                 </div>
-                <div className="scorer-bar-wrap">
+                <div className="scorer-bar-wrap leaderboard-bar">
                   <div className="scorer-bar-bg" style={{ height: 8 }}>
                     <div className="scorer-bar-fill" style={{ width: `${pct}%`, background: barColor }} />
                   </div>
