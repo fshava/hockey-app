@@ -1,14 +1,23 @@
 import { useMemo, useState } from 'react'
 import { useData } from '../hooks/useData'
 import { computeStandings } from '../lib/hockey'
+import { generateStandingsPDF } from '../lib/exportPDF'
 import { G } from '../lib/theme'
 
 export default function StandingsPage() {
   const { fixtures, scorers, loading } = useData()
   const [cls, setCls] = useState('first')
+  const [downloading, setDownloading] = useState(false)
 
   const clsFixtures = useMemo(() => fixtures.filter(f => f.class === cls), [fixtures, cls])
-  const standings = useMemo(() => computeStandings(clsFixtures, scorers), [clsFixtures, scorers])
+  const standings   = useMemo(() => computeStandings(clsFixtures, scorers), [clsFixtures, scorers])
+
+  const handleDownload = async () => {
+    setDownloading(true)
+    try { await generateStandingsPDF({ cls, standings }) }
+    catch (e) { console.error(e); alert('PDF failed, try again.') }
+    finally { setDownloading(false) }
+  }
 
   if (loading) return <div className="spinner" />
 
@@ -21,9 +30,25 @@ export default function StandingsPage() {
           <div className="section-title">League Standings</div>
           <div className="section-sub">Updated in real time</div>
         </div>
-        <div style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
+        <div style={{ marginLeft: 'auto', display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
           <span className={`class-tab first ${cls === 'first' ? 'sel' : ''}`} onClick={() => setCls('first')}>1st Class</span>
           <span className={`class-tab second ${cls === 'second' ? 'sel' : ''}`} onClick={() => setCls('second')}>2nd Class</span>
+          {standings.length > 0 && (
+            <button
+              onClick={handleDownload}
+              disabled={downloading}
+              style={{
+                display: 'inline-flex', alignItems: 'center', gap: 5,
+                padding: '6px 14px', borderRadius: 4, border: `1px solid ${color}55`,
+                cursor: downloading ? 'wait' : 'pointer',
+                fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 700,
+                fontSize: '0.8rem', letterSpacing: '0.06em', textTransform: 'uppercase',
+                background: `${color}18`, color, transition: 'all 0.15s',
+              }}
+            >
+              {downloading ? '⏳ Generating…' : '⬇ Download PDF'}
+            </button>
+          )}
         </div>
       </div>
 

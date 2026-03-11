@@ -97,5 +97,22 @@ export function useData() {
 
   const removeScorer = async (id) => { await supabase.from('goal_scorers').delete().eq('id',id); await fetchAll() }
 
-  return { venues, teams, players, fixtures, scorers, loading, error, fetchAll, updateVenue, addTeam, removeTeam, addPlayer, removePlayer, generateFixtures, updateFixture, upsertScorer, removeScorer }
+  // Bulk replace all scorers for a fixture (delete + re-insert)
+  const upsertScorers = async (fixtureId, scorerList) => {
+    await supabase.from('goal_scorers').delete().eq('fixture_id', fixtureId)
+    if (scorerList.length > 0) {
+      await supabase.from('goal_scorers').insert(
+        scorerList.map(s => ({
+          fixture_id: fixtureId,
+          player_name: s.player_name,
+          team_name: s.team_name,
+          goals: s.goals || 1,
+          own_goal: !!s.own_goal,
+        }))
+      )
+    }
+    await fetchAll()
+  }
+
+  return { venues, teams, players, fixtures, scorers, loading, error, fetchAll, updateVenue, addTeam, removeTeam, addPlayer, removePlayer, generateFixtures, updateFixture, upsertScorer, upsertScorers, removeScorer }
 }

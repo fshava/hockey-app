@@ -1,31 +1,28 @@
 import { useState } from 'react'
 import { useData } from '../../hooks/useData'
-import { buildFixtureRows } from '../../lib/hockey'
 import { G } from '../../lib/theme'
 
 export default function AdminSetupPage() {
-  const { teams, fixtures, addTeam, removeTeam, addFixtures, clearFixtures, loading } = useData()
+  const { teams, fixtures, addTeam, removeTeam, generateFixtures, loading } = useData()
   const [newName, setNewName] = useState({ first: '', second: '' })
   const [busy, setBusy] = useState(false)
   const [msg, setMsg] = useState(null)
 
-  const firstTeams = teams.filter(t => t.class === 'first')
-  const secondTeams = teams.filter(t => t.class === 'second')
-  const firstFixtures = fixtures.filter(f => f.class === 'first')
+  const firstTeams     = teams.filter(t => t.class === 'first')
+  const secondTeams    = teams.filter(t => t.class === 'second')
+  const firstFixtures  = fixtures.filter(f => f.class === 'first')
   const secondFixtures = fixtures.filter(f => f.class === 'second')
 
   const handleAdd = async (cls) => {
     const name = newName[cls].trim()
     if (!name) return
-    const { error } = await addTeam(name, cls)
-    if (error) setMsg({ type: 'error', text: error.message })
-    else setNewName(prev => ({ ...prev, [cls]: '' }))
+    await addTeam(name, cls)
+    setNewName(prev => ({ ...prev, [cls]: '' }))
   }
 
   const handleRemove = async (id) => {
-    if (!confirm('Remove this team? Their fixtures will remain but be orphaned.')) return
-    const { error } = await removeTeam(id)
-    if (error) setMsg({ type: 'error', text: error.message })
+    if (!confirm('Remove this team?')) return
+    await removeTeam(id)
   }
 
   const handleGenerate = async (cls) => {
@@ -37,12 +34,9 @@ export default function AdminSetupPage() {
     }
     setBusy(true)
     setMsg(null)
-    await clearFixtures(cls)
-    const rows = buildFixtureRows(list, cls)
-    const { error } = await addFixtures(rows)
+    await generateFixtures(cls)
     setBusy(false)
-    if (error) setMsg({ type: 'error', text: error.message })
-    else setMsg({ type: 'ok', text: `Generated ${rows.length} fixtures for ${cls} class.` })
+    setMsg({ type: 'ok', text: `Fixtures generated for ${cls} class.` })
   }
 
   if (loading) return <div className="spinner" />
@@ -60,8 +54,8 @@ export default function AdminSetupPage() {
 
       <div className="grid2">
         {[
-          { cls: 'first', label: '1st Class', color: G.lime, teams: firstTeams, fixtures: firstFixtures },
-          { cls: 'second', label: '2nd Class', color: G.sky, teams: secondTeams, fixtures: secondFixtures },
+          { cls: 'first',  label: '1st Class', color: G.lime, teams: firstTeams,  fixtures: firstFixtures },
+          { cls: 'second', label: '2nd Class', color: G.sky,  teams: secondTeams, fixtures: secondFixtures },
         ].map(({ cls, label, color, teams: list, fixtures: fx }) => (
           <div key={cls}>
             <div className="card" style={{ borderTop: `4px solid ${color}` }}>
