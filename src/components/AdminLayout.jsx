@@ -6,7 +6,7 @@ const ADMIN_TABS = [
   { path: '/admin/venues',   label: '🏟 Venues' },
   { path: '/admin/players',  label: '👤 Players' },
   { path: '/admin/fixtures', label: '📅 Fixtures' },
-  { path: '/admin/results',  label: '📝 Results' },
+  { path: '/admin/results',  label: '🏑 Results' },
 ]
 
 const PUBLIC_TABS = [

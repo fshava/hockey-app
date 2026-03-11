@@ -62,7 +62,7 @@ const ADMIN_LINKS = [
   { to: '/admin/venues', label: '🏟 Venues' },
   { to: '/admin/players', label: '👤 Players' },
   { to: '/admin/fixtures', label: '📝 Fixtures' },
-  { to: '/admin/results', label: '⚽ Results' },
+  { to: '/admin/results', label: '🏑 Results' },
 ]
 
 export default function Layout({ children }) {

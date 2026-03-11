@@ -74,7 +74,7 @@ export default function AdminResultsPage() {
     <div className="page">
       <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 20, flexWrap: 'wrap' }}>
         <div>
-          <div className="section-title">⚽ Results Entry</div>
+          <div className="section-title">🏑 Results Entry</div>
           <div className="section-sub">Enter scores and goal scorers</div>
         </div>
         <div style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
