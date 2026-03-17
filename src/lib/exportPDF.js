@@ -1,9 +1,9 @@
 // ─────────────────────────────────────────────────────────────
 //  exportPDF.js  –  all PDF exports for Hockey Fixtures Manager
 //  Exports:
-//    generateTeamPDF({ teamName, cls, fixtures, scorers, venues, standings })
-//    generateStandingsPDF({ cls, standings })
-//    generateLeaderboardPDF({ cls, topScorers })
+//    generateTeamPDF({ teamName, leagueId, leagueName, leagueColor, fixtures, scorers, venues, standings })
+//    generateStandingsPDF({ leagueName, leagueColor, standings })
+//    generateLeaderboardPDF({ leagueName, leagueColor, topScorers })
 // ─────────────────────────────────────────────────────────────
 
 const PITCH  = [26,  60,  42]
@@ -27,8 +27,10 @@ function fmtDate(d) {
   return new Date(d + 'T00:00:00').toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
 }
 function fmtTime(t) { return t ? t.slice(0, 5) : '—' }
-function clsLabel(cls) { return cls === 'first' ? '1st Class' : '2nd Class' }
-function accentOf(cls) { return cls === 'first' ? LIME : SKY }
+function hexToRgb(hex) {
+  const h = hex.replace('#','')
+  return [parseInt(h.slice(0,2),16), parseInt(h.slice(2,4),16), parseInt(h.slice(4,6),16)]
+}
 
 async function loadJsPDF() {
   if (window.jspdf) return window.jspdf.jsPDF
@@ -54,7 +56,7 @@ function makeHelpers(doc, accent) {
 }
 
 // ── Shared cover header ───────────────────────────────────────
-function drawCover(doc, h, accent, title, subtitle, cls) {
+function drawCover(doc, h, accent, title, subtitle) {
   const { rect, setFont, setColor, text } = h
   rect(0, W_PAGE, 0, 52, PITCH)
   rect(0, W_PAGE, 0, 5, accent)
@@ -262,7 +264,7 @@ function drawLeaderboardSection(doc, h, accent, topScorers, y) {
 // ═══════════════════════════════════════════════════════════════
 //  1.  TEAM PDF  (fixtures + standings + results)
 // ═══════════════════════════════════════════════════════════════
-export async function generateTeamPDF({ teamName, cls, fixtures, scorers, venues, standings }) {
+export async function generateTeamPDF({ teamName, leagueId, leagueName, leagueColor, fixtures, scorers, venues, standings }) {
   const jsPDF  = await loadJsPDF()
   const doc    = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' })
   const accent = accentOf(cls)
@@ -270,7 +272,7 @@ export async function generateTeamPDF({ teamName, cls, fixtures, scorers, venues
   const { setFont, setColor, rect, text, line } = h
 
   const teamFixtures = fixtures
-    .filter(f => f.home_team === teamName || f.away_team === teamName)
+    .filter(f => (f.league_id === leagueId) && (f.home_team === teamName || f.away_team === teamName))
     .sort((a, b) => (a.match_date || '').localeCompare(b.match_date || '') || a.round - b.round)
   const played   = teamFixtures.filter(f => f.home_goals != null)
   const upcoming = teamFixtures.filter(f => f.home_goals == null)
@@ -292,7 +294,7 @@ export async function generateTeamPDF({ teamName, cls, fixtures, scorers, venues
   }
 
   // Cover
-  drawCover(doc, h, accent, teamName, `${clsLabel(cls)} Season Report`, cls)
+  drawCover(doc, h, accent, teamName, `${leagueName || 'League'} Season Report`)
   y = 58
 
   // Stats row
@@ -313,7 +315,8 @@ export async function generateTeamPDF({ teamName, cls, fixtures, scorers, venues
       const bx = MARGIN + i * boxW
       rect(bx, boxW - 1, y, 22, PITCHL, 2)
       setFont('bold', 14); setColor(rgb)
-      text(display !== undefined ? display : val, bx + (boxW-1)/2, y + 12, { align: 'center' })
+      const dispVal = display !== undefined ? String(display) : String(val)
+      text(dispVal, bx + (boxW-1)/2, y + 12, { align: 'center' })
       setFont('normal', 6.5); setColor(MUTED)
       text(lbl, bx + (boxW-1)/2, y + 18, { align: 'center' })
     })
@@ -422,19 +425,19 @@ export async function generateTeamPDF({ teamName, cls, fixtures, scorers, venues
 
   drawFooters(doc, h, accent)
   const safe = teamName.replace(/[^a-z0-9]/gi, '_')
-  doc.save(`${safe}_${cls}_report.pdf`)
+  doc.save(`${safe}_${(leagueName||'league').replace(/[^a-z0-9]/gi,'_')}_report.pdf`)
 }
 
 // ═══════════════════════════════════════════════════════════════
 //  2.  STANDINGS PDF
 // ═══════════════════════════════════════════════════════════════
-export async function generateStandingsPDF({ cls, standings }) {
+export async function generateStandingsPDF({ leagueName, leagueColor, standings }) {
   const jsPDF  = await loadJsPDF()
   const doc    = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' })
-  const accent = accentOf(cls)
+  const accent = hexToRgb(leagueColor || '#7ecb35')
   const h      = makeHelpers(doc, accent)
 
-  drawCover(doc, h, accent, 'League Standings', `${clsLabel(cls)} — Full Table`, cls)
+  drawCover(doc, h, accent, 'League Standings', `${leagueName || 'League'} — Full Table`)
   let y = 58
 
   if (standings.length === 0) {
@@ -445,19 +448,19 @@ export async function generateStandingsPDF({ cls, standings }) {
   }
 
   drawFooters(doc, h, accent)
-  doc.save(`standings_${cls}_class.pdf`)
+  doc.save(`standings_${(leagueName||'league').replace(/[^a-z0-9]/gi,'_')}.pdf`)
 }
 
 // ═══════════════════════════════════════════════════════════════
 //  3.  LEADERBOARD PDF
 // ═══════════════════════════════════════════════════════════════
-export async function generateLeaderboardPDF({ cls, topScorers }) {
+export async function generateLeaderboardPDF({ leagueName, leagueColor, topScorers }) {
   const jsPDF  = await loadJsPDF()
   const doc    = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' })
-  const accent = accentOf(cls)
+  const accent = hexToRgb(leagueColor || '#7ecb35')
   const h      = makeHelpers(doc, accent)
 
-  drawCover(doc, h, accent, 'Top Goal Scorers', `${clsLabel(cls)} — Golden Boot`, cls)
+  drawCover(doc, h, accent, 'Top Goal Scorers', `${leagueName || 'League'} — Golden Boot`)
   let y = 58
 
   if (topScorers.length === 0) {
@@ -468,5 +471,5 @@ export async function generateLeaderboardPDF({ cls, topScorers }) {
   }
 
   drawFooters(doc, h, accent)
-  doc.save(`leaderboard_${cls}_class.pdf`)
+  doc.save(`leaderboard_${(leagueName||'league').replace(/[^a-z0-9]/gi,'_')}.pdf`)
 }
