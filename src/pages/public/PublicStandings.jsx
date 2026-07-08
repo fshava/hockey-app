@@ -27,35 +27,33 @@ function LeagueTable({ fixtures, scorers, cls }) {
                 </tr>
               </thead>
               <tbody>
-                {standings.map((row, idx) => {
-                  const mc = idx===0?'#ffd700':idx===1?'#c0c0c0':idx===2?'#cd7f32':'var(--white)'
-                  return (
-                    <tr key={row.name}>
-                      <td style={{ color:mc, fontFamily:"'Barlow Condensed'", fontWeight:800, fontSize:'1rem' }}>
-                        {idx===0?'🥇':idx===1?'🥈':idx===2?'🥉':idx+1}
-                      </td>
-                      <td className="left">{row.name}</td>
-                      <td>{row.P}</td>
-                      <td>{row.W}</td>
-                      <td>{row.D}</td>
-                      <td>{row.L}</td>
-                      <td>{row.GF}</td>
-                      <td>{row.GA}</td>
-                      <td style={{color:row.GD>0?'var(--lime)':row.GD<0?'var(--danger)':'var(--muted)',fontWeight:700}}>{row.GD>0?'+':''}{row.GD}</td>
-                      <td className="pts">{row.Pts}</td>
-                      <td>
-                        <div style={{display:'flex',gap:2,justifyContent:'center'}}>
-                          {row.form.slice(-5).length===0
-                            ? <span style={{color:'var(--muted)',fontSize:'0.72rem'}}>—</span>
-                            : row.form.slice(-5).map((r,i)=><span key={i} className={`form-pill form-${r}`}>{r}</span>)
-                          }
-                        </div>
-                      </td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
+  {standings.map((row, idx) => {
+    return (
+      <tr key={row.name}>
+        <td style={{ color:'var(--white)', fontFamily:"'Barlow Condensed'", fontWeight:800, fontSize:'1rem' }}>
+          {idx===0?'🥇':idx===1?'🥈':idx===2?'🥉':idx+1}
+        </td>
+        <td className="left" style={{color:'var(--white)',fontWeight:700}}>{row.name}</td>
+        <td style={{color:'var(--white)',fontWeight:700}}>{row.P}</td>
+        <td style={{color:'var(--white)',fontWeight:700}}>{row.W}</td>
+        <td style={{color:'var(--white)',fontWeight:700}}>{row.D}</td>
+        <td style={{color:'var(--white)',fontWeight:700}}>{row.L}</td>
+        <td style={{color:'var(--white)',fontWeight:700}}>{row.GF}</td>
+        <td style={{color:'var(--white)',fontWeight:700}}>{row.GA}</td>
+        <td style={{color:'var(--white)',fontWeight:700}}>{row.GD>0?'+':''}{row.GD}</td>
+        <td className="pts" style={{color:'var(--white)',fontWeight:700}}>{row.Pts}</td>
+        <td>
+          <div style={{display:'flex',gap:2,justifyContent:'center'}}>
+            {row.form.slice(-5).length===0
+              ? <span style={{color:'var(--muted)',fontSize:'0.72rem'}}>—</span>
+              : row.form.slice(-5).map((r,i)=><span key={i} className={`form-pill form-${r}`}>{r}</span>)
+            }
+          </div>
+        </td>
+      </tr>
+    )
+  })}
+</tbody>            </table>
         }
       </div>
     </div>
