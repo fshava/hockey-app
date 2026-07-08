@@ -42,7 +42,7 @@ function LeagueTable({ fixtures, scorers, cls }) {
                       <td>{row.GF}</td>
                       <td>{row.GA}</td>
                       <td style={{color:row.GD>0?'var(--lime)':row.GD<0?'var(--danger)':'var(--muted)',fontWeight:700}}>{row.GD>0?'+':''}{row.GD}</td>
-                      <td className="pts" style={{color}}>{row.Pts}</td>
+                      <td className="pts">{row.Pts}</td>
                       <td>
                         <div style={{display:'flex',gap:2,justifyContent:'center'}}>
                           {row.form.slice(-5).length===0
