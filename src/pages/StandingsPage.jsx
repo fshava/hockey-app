@@ -1,3 +1,66 @@
+import { useMemo } from 'react'
+import { useData } from '../hooks/useData'
+import { useLeagueTab } from '../hooks/useLeagueTab'
+import LeagueTabs from '../components/LeagueTabs'
+import { computeStandings } from '../lib/hockey'
+import { generateStandingsPDF } from '../lib/exportPDF'
+import { G } from '../lib/theme'
+import { useState } from 'react'
+
+export default function StandingsPage() {
+  const { leagues, fixtures, scorers, loading } = useData()
+  const [activeId, setActiveId, activeLeague] = useLeagueTab(leagues)
+  const [downloading, setDownloading] = useState(false)
+
+  const clsFixtures = useMemo(() => fixtures.filter(f => f.league_id === activeId), [fixtures, activeId])
+  const standings   = useMemo(() => computeStandings(clsFixtures, scorers), [clsFixtures, scorers])
+
+  const handleDownload = async () => {
+    setDownloading(true)
+    try { await generateStandingsPDF({ leagueName: activeLeague?.name, leagueColor: activeLeague?.color, standings }) }
+    catch (e) { console.error(e) }
+    finally { setDownloading(false) }
+  }
+
+  if (loading) return <div className="spinner" />
+
+  const accent = activeLeague?.color || G.lime
+
+  return (
+    <div className="page">
+      <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 20, flexWrap: 'wrap' }}>
+        <div>
+          <div className="section-title">🏆 Standings</div>
+          <div className="section-sub">Updated in real time</div>
+        </div>
+        <div style={{ marginLeft: 'auto', display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+          <LeagueTabs leagues={leagues} activeId={activeId} onChange={setActiveId}
+            extra={standings.length > 0 && (
+              <button onClick={handleDownload} disabled={downloading} style={{
+                display: 'inline-flex', alignItems: 'center', gap: 5,
+                padding: '5px 12px', borderRadius: 4, border: `1px solid ${accent}55`,
+                cursor: downloading ? 'wait' : 'pointer',
+                fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 700,
+                fontSize: '0.78rem', letterSpacing: '0.06em', textTransform: 'uppercase',
+                background: `${accent}15`, color: accent,
+              }}>
+                {downloading ? '⏳' : '⬇ PDF'}
+              </button>
+            )}
+          />
+        </div>
+      </div>
+
+      {standings.length === 0 ? (
+        <div className="alert alert-info">No data yet for {activeLeague?.name || 'this league'}.</div>
+      ) : (
+        <div className="league-table-wrap" style={{ background: G.pitchLight, borderRadius: 8, boxShadow: '0 4px 20px rgba(0,0,0,0.3)' }}>
+          <table className="league-table">
+            <thead>
+              <tr>
+                <th style={{ color: accent }}>#</th>
+                <th className="left" style={{ color: accent }}>Team</th>
+                <th>P</th><th>W</th>
                 <th className="hide-mobile">D</th>
                 <th className="hide-mobile">L</th>
                 <th className="hide-mobile">GF</th>
