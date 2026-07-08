@@ -35,10 +35,10 @@ function LeagueTable({ fixtures, scorers, cls }) {
                         {idx===0?'🥇':idx===1?'🥈':idx===2?'🥉':idx+1}
                       </td>
                       <td className="left">{row.name}</td>
-                      <td style={{color:'var(--muted)'}}>{row.P}</td>
-                      <td style={{color:'var(--lime)'}}>{row.W}</td>
-                      <td style={{color:'var(--muted)'}}>{row.D}</td>
-                      <td style={{color:'var(--danger)'}}>{row.L}</td>
+                      <td>{row.P}</td>
+                      <td>{row.W}</td>
+                      <td>{row.D}</td>
+                      <td>{row.L}</td>
                       <td>{row.GF}</td>
                       <td>{row.GA}</td>
                       <td style={{color:row.GD>0?'var(--lime)':row.GD<0?'var(--danger)':'var(--muted)',fontWeight:700}}>{row.GD>0?'+':''}{row.GD}</td>
