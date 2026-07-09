@@ -79,13 +79,13 @@ export default function StandingsPage() {
                       {idx < 3 ? ['🥇','🥈','🥉'][idx] : idx + 1}
                     </td>
                     <td className="left">{row.name}</td>
-                    <td style={{ color: G.muted }}>{row.P}</td>
-                    <td style={{ color: G.lime }}>{row.W}</td>
-                    <td className="hide-mobile" style={{ color: G.muted }}>{row.D}</td>
-                    <td className="hide-mobile" style={{ color: G.danger }}>{row.L}</td>
-                    <td className="hide-mobile">{row.GF}</td>
-                    <td className="hide-mobile">{row.GA}</td>
-                    <td style={{ color: row.GD > 0 ? G.lime : row.GD < 0 ? G.danger : G.muted, fontWeight: 700 }}>
+                    <td>{row.P}</td>
+                    <td>{row.W}</td>
+                    <td>{row.D}</td>
+                    <td>{row.L}</td>
+                    <td>{row.GF}</td>
+                    <td>{row.GA}</td>
+                    <td>
                       {row.GD > 0 ? '+' : ''}{row.GD}
                     </td>
                     <td style={{ fontFamily: "'Barlow Condensed'", fontWeight: 800, fontSize: '1.1rem', color: accent }}>{row.Pts}</td>
