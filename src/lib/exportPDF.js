@@ -373,16 +373,17 @@ export async function generateTeamPDF({ teamName, leagueId, leagueName, leagueCo
     checkPage(24)
     y = drawSectionTitle(doc, h, accent, 'RESULTS', y)
 
-    const C = { rnd: MARGIN + 5, date: MARGIN + 18, opp: MARGIN + 50, score: MARGIN + 128, venue: MARGIN + 150 }
+    const C = { badge: MARGIN + 7, rnd: MARGIN + 18, date: MARGIN + 30, opp: MARGIN + 56, score: MARGIN + 133, venue: MARGIN + 153 }
     rect(MARGIN, COL, y - 5, 7.5, PANEL_DARK, 0.6)
     setFont('bold', 7); setColor(INK_SOFT)
-    text('RND', C.rnd, y, { align: 'center' }); text('DATE', C.date, y); text('OPPONENT', C.opp, y)
+    text('RES', C.badge, y, { align: 'center' }); text('RND', C.rnd, y, { align: 'center' })
+    text('DATE', C.date, y); text('OPPONENT', C.opp, y)
     text('SCORE', C.score, y, { align: 'center' }); text('VENUE', C.venue, y)
     hline(MARGIN, y + 2.5, MARGIN + COL, y + 2.5, 0.4, LINE_STRONG)
-    y += 8
+    y += 9
 
-    played.forEach(f => {
-      checkPage(14)
+    played.forEach((f, idx) => {
+      checkPage(16)
       const isHome  = f.home_team === teamName
       const opp     = isHome ? f.away_team : f.home_team
       const myG     = isHome ? f.home_goals : f.away_goals
@@ -392,29 +393,44 @@ export async function generateTeamPDF({ teamName, leagueId, leagueName, leagueCo
       const venue   = venues.find(v => v.id === f.venue_id)
 
       const fScorers = scorers.filter(s => s.fixture_id === f.id && s.team_name === teamName && !s.own_goal && s.player_name)
-      const rowH = fScorers.length > 0 ? 15 : 10
+      const rowH = fScorers.length > 0 ? 16 : 11
 
-      rect(MARGIN, COL, y - 5.5, rowH, PANEL, 1)
-      rect(C.rnd - 3.4, 6.8, y - 4.3, 6.8, outFill, 3.4)
-      setFont('bold', 7.5); setColor(WHITE)
-      text(outcome, C.rnd, y - 0.2, { align: 'center' })
+      rect(MARGIN, COL, y - 5.5, rowH, idx % 2 ? PANEL : WHITE, 1)
 
-      setFont('normal', 7); setColor(INK_FAINT); text(`R${f.round}`, C.rnd, y + 4.4, { align: 'center' })
-      setFont('normal', 8.5); setColor(INK); text(fmtDate(f.match_date), C.date, y - 0.1)
-      text(truncate(opp, 26), C.opp, y - 0.1)
+      // Outcome badge — the one place colour carries meaning
+      rect(C.badge - 3.6, 7.2, y - 4.5, 7.2, outFill, 3.6)
+      setFont('bold', 8); setColor(WHITE)
+      text(outcome, C.badge, y - 0.3, { align: 'center' })
+
+      // Round — its own quiet column, no longer crowding the badge
+      setFont('bold', 7.5); setColor(INK_SOFT)
+      text(`R${f.round}`, C.rnd, y - 0.1, { align: 'center' })
+
+      setFont('normal', 8.5); setColor(INK)
+      text(fmtDate(f.match_date), C.date, y - 0.1)
+
+      setFont(isHome ? 'bold' : 'normal', 9); setColor(INK)
+      text(truncate(opp, 24), C.opp, y - 0.1)
+      setFont('normal', 6.8); setColor(INK_FAINT)
+      text(isHome ? 'HOME' : 'AWAY', C.opp, y + 4, { align: 'left' })
+
+      // Scoreline — a soft tinted chip, matching the PTS chip elsewhere
+      rect(C.score - 8, 16, y - 4.6, 6.6, tint(accent, 0.14), 2)
       setFont('bold', 9.5); setColor(INK)
       text(`${myG} – ${oppG}`, C.score, y - 0.1, { align: 'center' })
+
       setFont('normal', 7.5); setColor(INK_SOFT)
-      text(truncate(venue ? venue.name : '—', 20), C.venue, y - 0.1)
+      text(truncate(venue ? venue.name : '—', 22), C.venue, y - 0.1)
 
       if (fScorers.length > 0) {
-        setFont('normal', 6.8); setColor(INK_FAINT)
-        text(fScorers.map(s => `${s.player_name}${s.goals > 1 ? ` (${s.goals})` : ''}`).join('   ·   '), C.opp, y + 5)
+        setFont('italic', 7); setColor(INK_SOFT)
+        text(fScorers.map(s => `${s.player_name}${s.goals > 1 ? ` ×${s.goals}` : ''}`).join('   ·   '), C.opp, y + 9.2)
       }
 
       y += rowH
       hline(MARGIN, y - 0.7, MARGIN + COL, y - 0.7, 0.15)
     })
+
     y += 4
   }
 
@@ -423,34 +439,51 @@ export async function generateTeamPDF({ teamName, leagueId, leagueName, leagueCo
     checkPage(24)
     y = drawSectionTitle(doc, h, accent, 'UPCOMING FIXTURES', y)
 
-    const C = { rnd: MARGIN + 5, date: MARGIN + 18, time: MARGIN + 56, opp: MARGIN + 78, venue: MARGIN + 142 }
+    const C = { badge: MARGIN + 7, rnd: MARGIN + 18, date: MARGIN + 30, time: MARGIN + 60, opp: MARGIN + 80, venue: MARGIN + 148 }
     rect(MARGIN, COL, y - 5, 7.5, PANEL_DARK, 0.6)
     setFont('bold', 7); setColor(INK_SOFT)
-    text('RND', C.rnd, y, { align: 'center' }); text('DATE', C.date, y); text('TIME', C.time, y)
+    text('H/A', C.badge, y, { align: 'center' }); text('RND', C.rnd, y, { align: 'center' })
+    text('DATE', C.date, y); text('TIME', C.time, y, { align: 'center' })
     text('OPPONENT', C.opp, y); text('VENUE', C.venue, y)
     hline(MARGIN, y + 2.5, MARGIN + COL, y + 2.5, 0.4, LINE_STRONG)
-    y += 8
+    y += 9
 
-    upcoming.forEach(f => {
-      checkPage(11)
+    upcoming.forEach((f, idx) => {
+      checkPage(12)
       const isHome = f.home_team === teamName
       const opp    = isHome ? f.away_team : f.home_team
       const venue  = venues.find(v => v.id === f.venue_id)
+      const rowH   = 11
 
-      rect(MARGIN, COL, y - 5.5, 10, PANEL, 1)
-      rect(C.rnd - 3.4, 6.8, y - 4.3, 6.8, isHome ? accent : PANEL_DARK, 3.4)
-      setFont('bold', 7); setColor(isHome ? WHITE : INK)
-      text(isHome ? 'H' : 'A', C.rnd, y - 0.2, { align: 'center' })
+      rect(MARGIN, COL, y - 5.5, rowH, idx % 2 ? PANEL : WHITE, 1)
 
-      setFont('normal', 7); setColor(INK_FAINT); text(`R${f.round}`, C.rnd, y + 4.4, { align: 'center' })
-      setFont('normal', 8.5); setColor(INK); text(fmtDate(f.match_date), C.date, y - 0.1)
-      setColor(f.match_time ? INK : INK_FAINT); text(fmtTime(f.match_time), C.time, y - 0.1)
-      setColor(INK); text(truncate(opp, 26), C.opp, y - 0.1)
-      setFont('normal', 7.5); setColor(INK_SOFT); text(truncate(venue ? venue.name : '—', 22), C.venue, y - 0.1)
+      rect(C.badge - 3.6, 7.2, y - 4.5, 7.2, isHome ? accent : PANEL_DARK, 3.6)
+      setFont('bold', 7.5); setColor(isHome ? WHITE : INK)
+      text(isHome ? 'H' : 'A', C.badge, y - 0.3, { align: 'center' })
 
-      y += 10
+      setFont('bold', 7.5); setColor(INK_SOFT)
+      text(`R${f.round}`, C.rnd, y - 0.1, { align: 'center' })
+
+      setFont('normal', 8.5); setColor(INK)
+      text(fmtDate(f.match_date), C.date, y - 0.1)
+
+      const hasTime = !!f.match_time
+      rect(C.time - 8, 16, y - 4.6, 6.6, hasTime ? PANEL_DARK : WHITE, 2)
+      setFont(hasTime ? 'bold' : 'normal', 8); setColor(hasTime ? INK : INK_FAINT)
+      text(fmtTime(f.match_time), C.time, y - 0.1, { align: 'center' })
+
+      setFont(isHome ? 'bold' : 'normal', 9); setColor(INK)
+      text(truncate(opp, 24), C.opp, y - 0.1)
+      setFont('normal', 6.8); setColor(INK_FAINT)
+      text(isHome ? 'HOME' : 'AWAY', C.opp, y + 4, { align: 'left' })
+
+      setFont('normal', 7.5); setColor(INK_SOFT)
+      text(truncate(venue ? venue.name : '—', 20), C.venue, y - 0.1)
+
+      y += rowH
       hline(MARGIN, y - 0.7, MARGIN + COL, y - 0.7, 0.15)
     })
+
   }
 
   drawFooters(doc, h)
