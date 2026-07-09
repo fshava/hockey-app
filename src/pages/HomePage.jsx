@@ -139,10 +139,10 @@ export default function HomePage() {
                   <table className="league-table">
                     <thead>
                       <tr>
-                        <th style={{ color: league.color }}>#</th>
-                        <th className="left" style={{ color: league.color }}>Team</th>
+                        <th>#</th>
+                        <th className="left">Team</th>
                         <th>P</th><th>W</th><th className="hide-mobile">D</th><th className="hide-mobile">L</th>
-                        <th style={{ color: league.color }}>Pts</th>
+                        <th>Pts</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -150,11 +150,11 @@ export default function HomePage() {
                         <tr key={row.name}>
                           <td style={{ fontFamily: "'Barlow Condensed'", fontWeight: 800, color: idx===0?'#ffd700':idx===1?'#c0c0c0':idx===2?'#cd7f32':G.white }}>{idx+1}</td>
                           <td className="left">{row.name}</td>
-                          <td style={{ color: G.muted }}>{row.P}</td>
-                          <td style={{ color: G.lime }}>{row.W}</td>
-                          <td className="hide-mobile" style={{ color: G.muted }}>{row.D}</td>
-                          <td className="hide-mobile" style={{ color: G.danger }}>{row.L}</td>
-                          <td style={{ fontFamily: "'Barlow Condensed'", fontWeight: 800, color: league.color }}>{row.Pts}</td>
+                          <td>{row.P}</td>
+                          <td>{row.W}</td>
+                          <td className="hide-mobile">{row.D}</td>
+                          <td className="hide-mobile">{row.L}</td>
+                          <td style={{ fontFamily: "'Barlow Condensed'"}}>{row.Pts}</td>
                         </tr>
                       ))}
                     </tbody>
