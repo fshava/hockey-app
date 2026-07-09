@@ -23,14 +23,15 @@
 // Neutral ink palette — the ONLY colours ever used for text on a
 // plain (white/panel) background.
 const INK       = [28,  32,  30]   // primary text
-const INK_SOFT  = [104, 112, 107]  // secondary / muted text
-const INK_FAINT = [156, 162, 157]  // tertiary / hairline labels
+const INK_SOFT  = [96,  103, 98]   // secondary / muted text
+const INK_FAINT = [128, 134, 129]  // tertiary / hairline labels — darkened for legibility
 
 // Structural neutrals
 const WHITE      = [255, 255, 255]
 const PANEL      = [245, 246, 243]  // alternating row tint
-const PANEL_DARK = [235, 237, 232]  // stronger panel (headers, boxes)
-const LINE       = [224, 227, 220]  // hairlines / borders
+const PANEL_DARK = [232, 234, 229]  // stronger panel (headers, boxes)
+const LINE       = [214, 218, 210]  // hairlines / borders
+const LINE_STRONG = [188, 193, 186] // divider under column headers, table frame
 const COVER_BG   = [22,  27,  25]   // dark cover / footer band
 
 // Colour is reserved for badge fills, bars and rule lines — never
@@ -111,7 +112,7 @@ function makePageHeader(doc, h, accent, label) {
   return () => {
     const { hline, setFont, setColor, text } = h
     hline(MARGIN, 12, W_PAGE - MARGIN, 12, 0.6, accent)
-    setFont('bold', 8); setColor(INK_SOFT)
+    setFont('bold', 8.5); setColor(INK)
     text(label, MARGIN, 9)
   }
 }
@@ -122,9 +123,10 @@ function drawFooters(doc, h) {
   const total = doc.internal.getNumberOfPages()
   for (let i = 1; i <= total; i++) {
     doc.setPage(i)
-    hline(MARGIN, 285, W_PAGE - MARGIN, 285, 0.2, LINE)
-    setFont('normal', 7.5); setColor(INK_FAINT)
+    hline(MARGIN, 285, W_PAGE - MARGIN, 285, 0.3, LINE_STRONG)
+    setFont('normal', 7.5); setColor(INK_SOFT)
     text('School Hockey Fixtures Manager', MARGIN, 291)
+    setFont('bold', 7.5); setColor(INK_SOFT)
     text(`Page ${i} of ${total}`, W_PAGE - MARGIN, 291, { align: 'right' })
   }
 }
@@ -142,6 +144,7 @@ function drawSectionTitle(doc, h, accent, label, y) {
 function drawStandingsSection(doc, h, accent, standings, y, teamHighlight) {
   const { setFont, setColor, rect, text, hline } = h
   let cy = drawSectionTitle(doc, h, accent, 'LEAGUE STANDINGS', y)
+  const tableTop = cy - 4.5
 
   // Column plan (sums to COL = 180mm, nothing runs off the page)
   const C = {
@@ -159,13 +162,14 @@ function drawStandingsSection(doc, h, accent, standings, y, teamHighlight) {
   }
   const PILL_W = 3.1, PILL_GAP = 0.5   // 5 pills fit inside 18mm
 
-  setFont('bold', 6.8); setColor(INK_FAINT)
+  rect(MARGIN, COL, cy - 5, 7.5, PANEL_DARK, 0.6)
+  setFont('bold', 7); setColor(INK_SOFT)
   text('#', C.pos, cy, { align: 'center' })
   text('TEAM', C.team, cy)
   ;['P', 'W', 'D', 'L', 'GF', 'GA', 'GD'].forEach((lbl, i) => text(lbl, C.P + i * 10, cy, { align: 'center' }))
   text('PTS', C.Pts, cy, { align: 'center' })
   text('FORM', C.form, cy)
-  hline(MARGIN, cy + 2, MARGIN + COL, cy + 2, 0.3)
+  hline(MARGIN, cy + 2.5, MARGIN + COL, cy + 2.5, 0.4, LINE_STRONG)
   cy += 8
 
   standings.forEach((row, idx) => {
@@ -224,6 +228,10 @@ function drawStandingsSection(doc, h, accent, standings, y, teamHighlight) {
     hline(MARGIN, cy - 0.7, MARGIN + COL, cy - 0.7, 0.15)
   })
 
+  const tableBottom = cy - 1
+  hline(MARGIN, tableTop, MARGIN, tableBottom, 0.3, LINE_STRONG)
+  hline(MARGIN + COL, tableTop, MARGIN + COL, tableBottom, 0.3, LINE_STRONG)
+
   cy += 4
   setFont('normal', 7); setColor(INK_FAINT)
   text('Win = 3 pts   ·   Draw = 1 pt   ·   Loss = 0 pts   ·   Sorted by Pts, then GD, then GF', MARGIN, cy)
@@ -234,17 +242,19 @@ function drawStandingsSection(doc, h, accent, standings, y, teamHighlight) {
 function drawLeaderboardSection(doc, h, accent, topScorers, y) {
   const { setFont, setColor, rect, text, hline } = h
   let cy = drawSectionTitle(doc, h, accent, 'TOP GOAL SCORERS', y)
+  const tableTop = cy - 4.5
   const maxGoals = topScorers[0]?.goals || 1
 
   const C = { rank: MARGIN + 7, player: MARGIN + 16, team: MARGIN + 98, barStart: MARGIN + 130, goals: W_PAGE - MARGIN }
   const BAR_MAX = 34
 
-  setFont('bold', 6.8); setColor(INK_FAINT)
+  rect(MARGIN, COL, cy - 5, 7.5, PANEL_DARK, 0.6)
+  setFont('bold', 7); setColor(INK_SOFT)
   text('#', C.rank, cy, { align: 'center' })
   text('PLAYER', C.player, cy)
   text('TEAM', C.team, cy)
   text('GOALS', C.goals, cy, { align: 'right' })
-  hline(MARGIN, cy + 2, MARGIN + COL, cy + 2, 0.3)
+  hline(MARGIN, cy + 2.5, MARGIN + COL, cy + 2.5, 0.4, LINE_STRONG)
   cy += 8
 
   topScorers.forEach((s, idx) => {
@@ -279,6 +289,10 @@ function drawLeaderboardSection(doc, h, accent, topScorers, y) {
     cy += ROW_H
     hline(MARGIN, cy - 0.8, MARGIN + COL, cy - 0.8, 0.15)
   })
+
+  const tableBottom = cy - 0.8
+  hline(MARGIN, tableTop, MARGIN, tableBottom, 0.3, LINE_STRONG)
+  hline(MARGIN + COL, tableTop, MARGIN + COL, tableBottom, 0.3, LINE_STRONG)
 
   return cy + 4
 }
@@ -338,7 +352,7 @@ export async function generateTeamPDF({ teamName, leagueId, leagueName, leagueCo
       const bx = MARGIN + i * (boxW + gap)
       const isPts = lbl === 'PTS'
       rect(bx, boxW, y, 22, isPts ? tint(accent, 0.16) : PANEL, 2)
-      hline(bx, y, bx, y + 22, 0, LINE)
+      hline(bx + 1.5, y + 1.4, bx + boxW - 1.5, y + 1.4, 0.8, isPts ? accent : LINE_STRONG)
       setFont('bold', 15); setColor(INK)
       text(String(val), bx + boxW / 2, y + 12, { align: 'center' })
       setFont('normal', 6.5); setColor(INK_SOFT)
@@ -360,10 +374,11 @@ export async function generateTeamPDF({ teamName, leagueId, leagueName, leagueCo
     y = drawSectionTitle(doc, h, accent, 'RESULTS', y)
 
     const C = { rnd: MARGIN + 5, date: MARGIN + 18, opp: MARGIN + 50, score: MARGIN + 128, venue: MARGIN + 150 }
-    setFont('bold', 6.8); setColor(INK_FAINT)
+    rect(MARGIN, COL, y - 5, 7.5, PANEL_DARK, 0.6)
+    setFont('bold', 7); setColor(INK_SOFT)
     text('RND', C.rnd, y, { align: 'center' }); text('DATE', C.date, y); text('OPPONENT', C.opp, y)
     text('SCORE', C.score, y, { align: 'center' }); text('VENUE', C.venue, y)
-    hline(MARGIN, y + 2, MARGIN + COL, y + 2, 0.3)
+    hline(MARGIN, y + 2.5, MARGIN + COL, y + 2.5, 0.4, LINE_STRONG)
     y += 8
 
     played.forEach(f => {
@@ -409,10 +424,11 @@ export async function generateTeamPDF({ teamName, leagueId, leagueName, leagueCo
     y = drawSectionTitle(doc, h, accent, 'UPCOMING FIXTURES', y)
 
     const C = { rnd: MARGIN + 5, date: MARGIN + 18, time: MARGIN + 56, opp: MARGIN + 78, venue: MARGIN + 142 }
-    setFont('bold', 6.8); setColor(INK_FAINT)
+    rect(MARGIN, COL, y - 5, 7.5, PANEL_DARK, 0.6)
+    setFont('bold', 7); setColor(INK_SOFT)
     text('RND', C.rnd, y, { align: 'center' }); text('DATE', C.date, y); text('TIME', C.time, y)
     text('OPPONENT', C.opp, y); text('VENUE', C.venue, y)
-    hline(MARGIN, y + 2, MARGIN + COL, y + 2, 0.3)
+    hline(MARGIN, y + 2.5, MARGIN + COL, y + 2.5, 0.4, LINE_STRONG)
     y += 8
 
     upcoming.forEach(f => {
@@ -423,7 +439,7 @@ export async function generateTeamPDF({ teamName, leagueId, leagueName, leagueCo
 
       rect(MARGIN, COL, y - 5.5, 10, PANEL, 1)
       rect(C.rnd - 3.4, 6.8, y - 4.3, 6.8, isHome ? accent : PANEL_DARK, 3.4)
-      setFont('bold', 7); setColor(isHome ? WHITE : INK_SOFT)
+      setFont('bold', 7); setColor(isHome ? WHITE : INK)
       text(isHome ? 'H' : 'A', C.rnd, y - 0.2, { align: 'center' })
 
       setFont('normal', 7); setColor(INK_FAINT); text(`R${f.round}`, C.rnd, y + 4.4, { align: 'center' })
