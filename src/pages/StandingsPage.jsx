@@ -59,14 +59,14 @@ export default function StandingsPage() {
             <thead>
               <tr>
                 <th style={{ color: accent }}>#</th>
-                <th className="left" style={{ color: accent }}>Team</th>
+                <th className="left">Team</th>
                 <th>P</th><th>W</th>
                 <th className="hide-mobile">D</th>
                 <th className="hide-mobile">L</th>
                 <th className="hide-mobile">GF</th>
                 <th className="hide-mobile">GA</th>
                 <th>GD</th>
-                <th style={{ color: accent }}>Pts</th>
+                <th>Pts</th>
                 <th className="hide-mobile">Form</th>
               </tr>
             </thead>
@@ -88,7 +88,7 @@ export default function StandingsPage() {
                     <td>
                       {row.GD > 0 ? '+' : ''}{row.GD}
                     </td>
-                    <td style={{ fontFamily: "'Barlow Condensed'", fontWeight: 800, fontSize: '1.1rem', color: accent }}>{row.Pts}</td>
+                    <td style={{ fontFamily: "'Barlow Condensed'", fontWeight: 800, fontSize: '1.1rem'}}>{row.Pts}</td>
                     <td className="hide-mobile">
                       <div style={{ display: 'flex', gap: 2, justifyContent: 'center' }}>
                         {row.form.slice(-5).length === 0
