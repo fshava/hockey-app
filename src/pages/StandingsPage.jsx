@@ -88,7 +88,7 @@ export default function StandingsPage() {
                     <td>
                       {row.GD > 0 ? '+' : ''}{row.GD}
                     </td>
-                    <td style={{ fontFamily: "'Barlow Condensed'", fontWeight: 800, fontSize: '1.1rem'}}>{row.Pts}</td>
+                    <td style={{ fontFamily: "'Barlow Condensed'", fontSize: '1.1rem'}}>{row.Pts}</td>
                     <td className="hide-mobile">
                       <div style={{ display: 'flex', gap: 2, justifyContent: 'center' }}>
                         {row.form.slice(-5).length === 0
