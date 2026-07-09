@@ -56,6 +56,10 @@ function makeHelpers(doc, accent) {
 }
 
 // ── Shared cover header ───────────────────────────────────────
+// NOTE: previously referenced an undefined `cls` / `clsLabel()` (leftover
+// from an older "1st XI / 2nd XI" version of this file). That threw a
+// ReferenceError on every call, silently killing all three PDF exports.
+// The badge has been removed since there's no such concept here anymore.
 function drawCover(doc, h, accent, title, subtitle) {
   const { rect, setFont, setColor, text } = h
   rect(0, W_PAGE, 0, 52, PITCH)
@@ -66,9 +70,6 @@ function drawCover(doc, h, accent, title, subtitle) {
   // truncate long titles
   const displayTitle = title.length > 28 ? title.slice(0, 27) + '…' : title
   text(displayTitle.toUpperCase(), MARGIN, 31)
-  rect(MARGIN, 30, 35, 8, accent, 2)
-  setFont('bold', 8); setColor(cls === 'first' ? PITCH : WHITE)
-  text(clsLabel(cls).toUpperCase(), MARGIN + 15, 40.5, { align: 'center' })
   setFont('normal', 7.5); setColor(MUTED)
   text(`Generated ${new Date().toLocaleDateString('en-GB', { day:'2-digit', month:'long', year:'numeric' })}`, W_PAGE - MARGIN, 40.5, { align: 'right' })
   if (subtitle) {
@@ -267,7 +268,11 @@ function drawLeaderboardSection(doc, h, accent, topScorers, y) {
 export async function generateTeamPDF({ teamName, leagueId, leagueName, leagueColor, fixtures, scorers, venues, standings }) {
   const jsPDF  = await loadJsPDF()
   const doc    = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' })
-  const accent = accentOf(cls)
+  // Was: accentOf(cls) — `cls` was never defined/passed anywhere in this
+  // file, so this threw immediately and silently killed the whole export.
+  // Derive the accent from the league color instead, same as the other
+  // two PDF generators below.
+  const accent = hexToRgb(leagueColor || '#7ecb35')
   const h      = makeHelpers(doc, accent)
   const { setFont, setColor, rect, text, line } = h
 
@@ -286,7 +291,8 @@ export async function generateTeamPDF({ teamName, leagueId, leagueName, leagueCo
     if (myG > oppG) W++; else if (myG < oppG) L++; else D++
   })
 
-  const drawPageHeader = makePageHeader(doc, h, accent, `${teamName}  ·  ${clsLabel(cls)}`)
+  // Was: `${teamName} · ${clsLabel(cls)}` — clsLabel/cls didn't exist.
+  const drawPageHeader = makePageHeader(doc, h, accent, `${teamName}${leagueName ? '  ·  ' + leagueName : ''}`)
   let y = 0
 
   const checkPage = (needed = 20) => {
@@ -408,7 +414,10 @@ export async function generateTeamPDF({ teamName, leagueId, leagueName, leagueCo
 
       rect(MARGIN, COL, y-4.5, 9, PITCHM, 1)
       rect(MARGIN, 8, y-3.5, 7, haRgb, 1)
-      setFont('bold', 7); setColor(isHome ? (cls === 'first' ? PITCH : WHITE) : WHITE)
+      // Was: cls === 'first' ? PITCH : WHITE — `cls` didn't exist.
+      // Home badge uses the league accent background, so pick readable
+      // text color against it; away badge is always the neutral gray above.
+      setFont('bold', 7); setColor(isHome ? WHITE : WHITE)
       text(isHome ? 'H' : 'A', MARGIN+4, y+0.5, { align: 'center' })
 
       setFont('normal', 7.5); setColor(MUTED);  text(`R${f.round}`, C.rnd+1, y+0.5)
