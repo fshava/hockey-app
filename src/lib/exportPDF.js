@@ -4,23 +4,47 @@
 //    generateTeamPDF({ teamName, leagueId, leagueName, leagueColor, fixtures, scorers, venues, standings })
 //    generateStandingsPDF({ leagueName, leagueColor, standings })
 //    generateLeaderboardPDF({ leagueName, leagueColor, topScorers })
+//
+//  DESIGN NOTES (this pass):
+//   - Running text is never coloured. Every label, name, number and
+//     stat is set in INK or INK_SOFT (near-black / warm grey). Colour
+//     is used only for: the cover banner, thin accent rule lines, and
+//     small filled badges/pills/bars — never for the letterforms of
+//     ordinary text sitting on a plain background.
+//   - Layout constants were recalculated so every table (standings,
+//     results, upcoming, leaderboard) sums to exactly COL width —
+//     the old file let the form-pill row run ~25mm past the page
+//     edge on a 5-game streak. Nothing should clip or overflow now.
+//   - Alternating row shading + generous row height replaces the
+//     "everything is bold and colourful" look with something closer
+//     to a normal printed report.
 // ─────────────────────────────────────────────────────────────
 
-const PITCH  = [26,  60,  42]
-const PITCHL = [42,  92,  64]
-const PITCHM = [35,  70,  50]
-const LIME   = [126, 203, 53]
-const SKY    = [58,  143, 204]
-const WHITE  = [255, 255, 255]
-const MUTED  = [140, 160, 145]
-const DANGER = [192, 57,  43]
-const GOLD   = [212, 175, 55]
-const SILVER = [192, 192, 192]
-const BRONZE = [205, 127, 50]
+// Neutral ink palette — the ONLY colours ever used for text on a
+// plain (white/panel) background.
+const INK       = [28,  32,  30]   // primary text
+const INK_SOFT  = [104, 112, 107]  // secondary / muted text
+const INK_FAINT = [156, 162, 157]  // tertiary / hairline labels
+
+// Structural neutrals
+const WHITE      = [255, 255, 255]
+const PANEL      = [245, 246, 243]  // alternating row tint
+const PANEL_DARK = [235, 237, 232]  // stronger panel (headers, boxes)
+const LINE       = [224, 227, 220]  // hairlines / borders
+const COVER_BG   = [22,  27,  25]   // dark cover / footer band
+
+// Colour is reserved for badge fills, bars and rule lines — never
+// for the text that sits directly on a white/panel background.
+const GOLD   = [176, 141, 60]
+const SILVER = [148, 152, 156]
+const BRONZE = [163, 116, 74]
+const WIN    = [86,  138, 101]
+const LOSS   = [176, 92,  84]
+const DRAW   = [150, 152, 148]
 
 const W_PAGE = 210
-const MARGIN = 14
-const COL    = W_PAGE - MARGIN * 2
+const MARGIN = 15
+const COL    = W_PAGE - MARGIN * 2   // 180
 
 function fmtDate(d) {
   if (!d) return '—'
@@ -28,8 +52,18 @@ function fmtDate(d) {
 }
 function fmtTime(t) { return t ? t.slice(0, 5) : '—' }
 function hexToRgb(hex) {
-  const h = hex.replace('#','')
-  return [parseInt(h.slice(0,2),16), parseInt(h.slice(2,4),16), parseInt(h.slice(4,6),16)]
+  const h = (hex || '7ecb35').replace('#', '')
+  return [parseInt(h.slice(0, 2), 16), parseInt(h.slice(2, 4), 16), parseInt(h.slice(4, 6), 16)]
+}
+// Mix a colour toward white — used to get a soft, print-friendly
+// tint of the league accent for backgrounds (never for text).
+function tint(rgb, amount) {
+  // amount 0 = pure white, 1 = full colour
+  return rgb.map(c => Math.round(255 + (c - 255) * amount))
+}
+function truncate(str, max) {
+  if (!str) return ''
+  return str.length > max ? str.slice(0, max - 1) + '…' : str
 }
 
 async function loadJsPDF() {
@@ -44,219 +78,206 @@ async function loadJsPDF() {
 }
 
 // ── Shared doc helpers ────────────────────────────────────────
-function makeHelpers(doc, accent) {
+function makeHelpers(doc) {
   const setFont  = (style = 'normal', size = 10) => { doc.setFont('helvetica', style); doc.setFontSize(size) }
   const setColor = (...rgb) => doc.setTextColor(...(rgb.length === 1 ? rgb[0] : rgb))
   const setFill  = (...rgb) => doc.setFillColor(...(rgb.length === 1 ? rgb[0] : rgb))
   const setDraw  = (...rgb) => doc.setDrawColor(...(rgb.length === 1 ? rgb[0] : rgb))
   const text     = (str, x, y, opts = {}) => doc.text(String(str), x, y, opts)
   const rect     = (x, w, y, h, rgb, rnd = 0) => { setFill(rgb); doc.roundedRect(x, y, w, h, rnd, rnd, 'F') }
-  const line     = (x1, y1, x2, y2, w = 0.2) => { doc.setLineWidth(w); doc.line(x1, y1, x2, y2) }
-  return { setFont, setColor, setFill, setDraw, text, rect, line }
+  const hline    = (x1, y1, x2, y2, w = 0.2, rgb = LINE) => { setDraw(rgb); doc.setLineWidth(w); doc.line(x1, y1, x2, y2) }
+  return { setFont, setColor, setFill, setDraw, text, rect, hline }
 }
 
-// ── Shared cover header ───────────────────────────────────────
-// NOTE: previously referenced an undefined `cls` / `clsLabel()` (leftover
-// from an older "1st XI / 2nd XI" version of this file). That threw a
-// ReferenceError on every call, silently killing all three PDF exports.
-// The badge has been removed since there's no such concept here anymore.
+// ── Cover ────────────────────────────────────────────────────
 function drawCover(doc, h, accent, title, subtitle) {
   const { rect, setFont, setColor, text } = h
-  rect(0, W_PAGE, 0, 52, PITCH)
-  rect(0, W_PAGE, 0, 5, accent)
-  setFont('bold', 8); setColor(accent)
-  text('SCHOOL HOCKEY', MARGIN, 14)
-  setFont('bold', 26); setColor(WHITE)
-  // truncate long titles
-  const displayTitle = title.length > 28 ? title.slice(0, 27) + '…' : title
-  text(displayTitle.toUpperCase(), MARGIN, 31)
-  setFont('normal', 7.5); setColor(MUTED)
-  text(`Generated ${new Date().toLocaleDateString('en-GB', { day:'2-digit', month:'long', year:'numeric' })}`, W_PAGE - MARGIN, 40.5, { align: 'right' })
+  rect(0, W_PAGE, 0, 50, COVER_BG)
+  rect(0, W_PAGE, 0, 3, accent)
+  setFont('normal', 8); setColor(WHITE)
+  text('SCHOOL HOCKEY  ·  SEASON REPORT', MARGIN, 15)
+  setFont('bold', 24); setColor(WHITE)
+  text(truncate(title, 32).toUpperCase(), MARGIN, 30)
   if (subtitle) {
-    setFont('normal', 8); setColor(MUTED)
-    text(subtitle, MARGIN, 47)
+    setFont('normal', 9); setColor([200, 205, 200])
+    text(subtitle, MARGIN, 39)
   }
+  setFont('normal', 7.5); setColor([170, 178, 172])
+  text(`Generated ${new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'long', year: 'numeric' })}`, W_PAGE - MARGIN, 39, { align: 'right' })
 }
 
-// ── Shared page continuation header ──────────────────────────
+// ── Continuation page header ────────────────────────────────
 function makePageHeader(doc, h, accent, label) {
   return () => {
-    const { rect, setFont, setColor, text } = h
-    rect(0, W_PAGE, 0, 4, accent)
-    setFont('bold', 7); setColor(MUTED)
-    text(label, W_PAGE - MARGIN, 10, { align: 'right' })
+    const { hline, setFont, setColor, text } = h
+    hline(MARGIN, 12, W_PAGE - MARGIN, 12, 0.6, accent)
+    setFont('bold', 8); setColor(INK_SOFT)
+    text(label, MARGIN, 9)
   }
 }
 
-// ── Shared footer ─────────────────────────────────────────────
-function drawFooters(doc, h, accent) {
-  const { rect, setFont, setColor, text } = h
+// ── Footer ───────────────────────────────────────────────────
+function drawFooters(doc, h) {
+  const { hline, setFont, setColor, text } = h
   const total = doc.internal.getNumberOfPages()
   for (let i = 1; i <= total; i++) {
     doc.setPage(i)
-    rect(0, W_PAGE, 288, 9, PITCH)
-    rect(0, W_PAGE, 288, 1, accent)
-    setFont('normal', 7); setColor(MUTED)
-    text('School Hockey Fixtures Manager', MARGIN, 294)
-    text(`Page ${i} of ${total}`, W_PAGE - MARGIN, 294, { align: 'right' })
+    hline(MARGIN, 285, W_PAGE - MARGIN, 285, 0.2, LINE)
+    setFont('normal', 7.5); setColor(INK_FAINT)
+    text('School Hockey Fixtures Manager', MARGIN, 291)
+    text(`Page ${i} of ${total}`, W_PAGE - MARGIN, 291, { align: 'right' })
   }
 }
 
-// ── Standings table section (shared by team PDF + standings PDF) ──
+// ── Small helpers for section titles ───────────────────────
+function drawSectionTitle(doc, h, accent, label, y) {
+  const { setFont, setColor, hline, text } = h
+  setFont('bold', 10); setColor(INK)
+  text(label, MARGIN, y)
+  hline(MARGIN, y + 2, MARGIN + COL, y + 2, 0.7, accent)
+  return y + 9
+}
+
+// ── Standings table (shared by team PDF + standings PDF) ────
 function drawStandingsSection(doc, h, accent, standings, y, teamHighlight) {
-  const { setFont, setColor, rect, text, line } = h
-  let cy = y
+  const { setFont, setColor, rect, text, hline } = h
+  let cy = drawSectionTitle(doc, h, accent, 'LEAGUE STANDINGS', y)
 
-  setFont('bold', 9); setColor(accent)
-  text('LEAGUE STANDINGS', MARGIN, cy)
-  doc.setLineWidth(0.3); setColor(accent)
-  doc.line(MARGIN, cy + 1, MARGIN + COL, cy + 1)
-  cy += 7
-
-  // Header row
+  // Column plan (sums to COL = 180mm, nothing runs off the page)
   const C = {
-    pos:  MARGIN + 5,
-    team: MARGIN + 18,
-    P:    MARGIN + 82,
-    W:    MARGIN + 95,
-    D:    MARGIN + 108,
-    L:    MARGIN + 121,
-    GF:   MARGIN + 134,
-    GA:   MARGIN + 147,
-    GD:   MARGIN + 160,
-    Pts:  MARGIN + 174,
-    form: MARGIN + 185,
+    pos:  MARGIN + 7,
+    team: MARGIN + 15,
+    P:    MARGIN + 77,
+    W:    MARGIN + 87,
+    D:    MARGIN + 97,
+    L:    MARGIN + 107,
+    GF:   MARGIN + 117,
+    GA:   MARGIN + 127,
+    GD:   MARGIN + 137,
+    Pts:  MARGIN + 149,
+    form: MARGIN + 162,
   }
-  setFont('bold', 7); setColor(MUTED)
-  text('#',    C.pos,  cy, { align: 'center' })
+  const PILL_W = 3.1, PILL_GAP = 0.5   // 5 pills fit inside 18mm
+
+  setFont('bold', 6.8); setColor(INK_FAINT)
+  text('#', C.pos, cy, { align: 'center' })
   text('TEAM', C.team, cy)
-  ;['P','W','D','L','GF','GA','GD','PTS'].forEach((lbl, i) => {
-    text(lbl, C.P + i * 13, cy, { align: 'center' })
-  })
+  ;['P', 'W', 'D', 'L', 'GF', 'GA', 'GD'].forEach((lbl, i) => text(lbl, C.P + i * 10, cy, { align: 'center' }))
+  text('PTS', C.Pts, cy, { align: 'center' })
   text('FORM', C.form, cy)
-  doc.setLineWidth(0.2)
-  doc.line(MARGIN, cy + 1.5, MARGIN + COL, cy + 1.5)
-  cy += 6
+  hline(MARGIN, cy + 2, MARGIN + COL, cy + 2, 0.3)
+  cy += 8
 
   standings.forEach((row, idx) => {
-    const ROW_H = 9
+    const ROW_H = 10
     const isHighlight = teamHighlight && row.name === teamHighlight
-    const posRgb = idx === 0 ? GOLD : idx === 1 ? SILVER : idx === 2 ? BRONZE : WHITE
-    const gdRgb  = row.GD > 0 ? LIME : row.GD < 0 ? DANGER : MUTED
-    const gdStr  = row.GD > 0 ? `+${row.GD}` : String(row.GD)
+    const medal = idx === 0 ? GOLD : idx === 1 ? SILVER : idx === 2 ? BRONZE : null
+    const gdStr = row.GD > 0 ? `+${row.GD}` : String(row.GD)
 
-    // Row background
-    rect(MARGIN, COL, cy - 4.5, ROW_H, isHighlight ? [50, 100, 60] : PITCHM, 1)
-    if (isHighlight) {
-      doc.setDrawColor(...accent)
-      doc.setLineWidth(0.5)
-      doc.roundedRect(MARGIN, cy - 4.5, COL, ROW_H, 1, 1, 'S')
+    rect(MARGIN, COL, cy - 5.5, ROW_H, isHighlight ? tint(accent, 0.15) : (idx % 2 ? PANEL : WHITE), 1)
+    if (isHighlight) rect(MARGIN, 1.2, cy - 5.5, ROW_H, accent)
+
+    // Position — medal badge for top 3, plain ink number otherwise
+    if (medal) {
+      rect(C.pos - 3.4, 6.8, cy - 4.3, 6.8, medal, 3.4)
+      setFont('bold', 8); setColor(WHITE)
+      text(String(idx + 1), C.pos, cy - 0.1, { align: 'center' })
+    } else {
+      setFont('bold', 8.5); setColor(INK)
+      text(String(idx + 1), C.pos, cy - 0.1, { align: 'center' })
     }
 
-    // Position
-    setFont('bold', 8); setColor(posRgb)
-    text(String(idx + 1), C.pos, cy + 0.5, { align: 'center' })
+    // Team name
+    setFont(isHighlight ? 'bold' : 'normal', 9); setColor(INK)
+    text(truncate(row.name, 32), C.team, cy - 0.1)
 
-    // Team name (truncate)
-    setFont(isHighlight ? 'bold' : 'normal', 8)
-    setColor(isHighlight ? accent : WHITE)
-    const displayName = row.name.length > 20 ? row.name.slice(0, 19) + '…' : row.name
-    text(displayName, C.team, cy + 0.5)
+    // Stats — ink text throughout; weight (not colour) signals W
+    setFont('normal', 8.5); setColor(INK_SOFT)
+    text(String(row.P), C.P, cy - 0.1, { align: 'center' })
+    setFont('bold', 8.5);  setColor(INK); text(String(row.W), C.W, cy - 0.1, { align: 'center' })
+    setFont('normal', 8.5); setColor(INK_SOFT)
+    text(String(row.D), C.D, cy - 0.1, { align: 'center' })
+    text(String(row.L), C.L, cy - 0.1, { align: 'center' })
+    setColor(INK)
+    text(String(row.GF), C.GF, cy - 0.1, { align: 'center' })
+    text(String(row.GA), C.GA, cy - 0.1, { align: 'center' })
+    setFont('bold', 8.5)
+    text(gdStr, C.GD, cy - 0.1, { align: 'center' })
 
-    // Stats
-    setFont('normal', 8); setColor(MUTED)
-    text(row.P, C.P,   cy + 0.5, { align: 'center' })
-    setColor(LIME);   text(row.W, C.W,  cy + 0.5, { align: 'center' })
-    setColor(MUTED);  text(row.D, C.D,  cy + 0.5, { align: 'center' })
-    setColor(DANGER); text(row.L, C.L,  cy + 0.5, { align: 'center' })
-    setColor(WHITE);  text(row.GF, C.GF, cy + 0.5, { align: 'center' })
-    setColor(WHITE);  text(row.GA, C.GA, cy + 0.5, { align: 'center' })
-    setColor(gdRgb);  setFont('bold', 8); text(gdStr, C.GD, cy + 0.5, { align: 'center' })
+    // Points — the primary metric, given a soft tint chip (colour as
+    // background, not as font colour)
+    rect(C.Pts - 6, 12, cy - 4.6, 6.4, tint(accent, 0.14), 2)
+    setFont('bold', 9.5); setColor(INK)
+    text(String(row.Pts), C.Pts, cy - 0.1, { align: 'center' })
 
-    // Points
-    setFont('bold', 9); setColor(accent)
-    text(row.Pts, C.Pts, cy + 0.5, { align: 'center' })
-
-    // Form pills (last 5)
+    // Form pills — small filled squares (colour as fill, white text)
     const form = (row.form || []).slice(-5)
     form.forEach((r, fi) => {
-      const fc = r === 'W' ? LIME : r === 'L' ? DANGER : MUTED
-      rect(C.form + fi * 10, 8, cy - 3.5, 7, fc, 1)
-      setFont('bold', 6.5)
-      setColor(r === 'W' ? PITCH : WHITE)
-      text(r, C.form + fi * 10 + 4, cy + 0.5, { align: 'center' })
+      const fc = r === 'W' ? WIN : r === 'L' ? LOSS : DRAW
+      const px = C.form + fi * (PILL_W + PILL_GAP)
+      rect(px, PILL_W, cy - 4.3, 6.2, fc, 0.8)
+      setFont('bold', 6); setColor(WHITE)
+      text(r, px + PILL_W / 2, cy - 0.1, { align: 'center' })
     })
 
     cy += ROW_H
-    doc.setLineWidth(0.1)
-    doc.setDrawColor(50, 85, 62)
-    doc.line(MARGIN, cy - 0.5, MARGIN + COL, cy - 0.5)
+    hline(MARGIN, cy - 0.7, MARGIN + COL, cy - 0.7, 0.15)
   })
 
-  // Legend
-  cy += 3
-  setFont('normal', 6.5); setColor(MUTED)
-  text('Win = 3 pts  ·  Draw = 1 pt  ·  Loss = 0 pts  ·  Sorted: Pts → GD → GF', MARGIN, cy)
-  cy += 5
-
-  return cy
+  cy += 4
+  setFont('normal', 7); setColor(INK_FAINT)
+  text('Win = 3 pts   ·   Draw = 1 pt   ·   Loss = 0 pts   ·   Sorted by Pts, then GD, then GF', MARGIN, cy)
+  return cy + 6
 }
 
-// ── Leaderboard section ───────────────────────────────────────
+// ── Leaderboard table ────────────────────────────────────────
 function drawLeaderboardSection(doc, h, accent, topScorers, y) {
-  const { setFont, setColor, rect, text } = h
-  let cy = y
+  const { setFont, setColor, rect, text, hline } = h
+  let cy = drawSectionTitle(doc, h, accent, 'TOP GOAL SCORERS', y)
   const maxGoals = topScorers[0]?.goals || 1
 
-  setFont('bold', 9); setColor(accent)
-  text('TOP GOAL SCORERS', MARGIN, cy)
-  doc.setLineWidth(0.3); doc.setDrawColor(...accent)
-  doc.line(MARGIN, cy + 1, MARGIN + COL, cy + 1)
-  cy += 7
+  const C = { rank: MARGIN + 7, player: MARGIN + 16, team: MARGIN + 98, barStart: MARGIN + 130, goals: W_PAGE - MARGIN }
+  const BAR_MAX = 34
 
-  // Header
-  setFont('bold', 7); setColor(MUTED)
-  text('#', MARGIN + 5, cy, { align: 'center' })
-  text('PLAYER', MARGIN + 18, cy)
-  text('TEAM', MARGIN + 100, cy)
-  text('GOALS', W_PAGE - MARGIN, cy, { align: 'right' })
-  doc.setLineWidth(0.2)
-  doc.line(MARGIN, cy + 1.5, MARGIN + COL, cy + 1.5)
-  cy += 6
+  setFont('bold', 6.8); setColor(INK_FAINT)
+  text('#', C.rank, cy, { align: 'center' })
+  text('PLAYER', C.player, cy)
+  text('TEAM', C.team, cy)
+  text('GOALS', C.goals, cy, { align: 'right' })
+  hline(MARGIN, cy + 2, MARGIN + COL, cy + 2, 0.3)
+  cy += 8
 
   topScorers.forEach((s, idx) => {
-    const ROW_H    = 10
-    const rankRgb  = idx === 0 ? GOLD : idx === 1 ? SILVER : idx === 2 ? BRONZE : MUTED
-    const barW     = Math.max(2, (s.goals / maxGoals) * 70)
-    const goalRgb  = idx === 0 ? GOLD : accent
+    const ROW_H = 10.5
+    const medal = idx === 0 ? GOLD : idx === 1 ? SILVER : idx === 2 ? BRONZE : null
+    const barW  = Math.max(2, (s.goals / maxGoals) * BAR_MAX)
 
-    rect(MARGIN, COL, cy - 4.5, ROW_H, PITCHM, 1)
+    rect(MARGIN, COL, cy - 5.7, ROW_H, idx % 2 ? PANEL : WHITE, 1)
 
-    // Rank
-    setFont('bold', idx < 3 ? 10 : 8); setColor(rankRgb)
-    text(String(idx + 1), MARGIN + 5, cy + 0.8, { align: 'center' })
+    if (medal) {
+      rect(C.rank - 3.6, 7.2, cy - 4.3, 7.2, medal, 3.6)
+      setFont('bold', 8.5); setColor(WHITE)
+      text(String(idx + 1), C.rank, cy - 0.2, { align: 'center' })
+    } else {
+      setFont('bold', 8.5); setColor(INK)
+      text(String(idx + 1), C.rank, cy - 0.2, { align: 'center' })
+    }
 
-    // Player name
-    setFont(idx === 0 ? 'bold' : 'normal', 8.5); setColor(WHITE)
-    const pName = s.playerName.length > 26 ? s.playerName.slice(0, 25) + '…' : s.playerName
-    text(pName, MARGIN + 18, cy + 0.8)
+    setFont(idx === 0 ? 'bold' : 'normal', 9); setColor(INK)
+    text(truncate(s.playerName, 38), C.player, cy - 0.2)
 
-    // Team
-    setFont('normal', 7); setColor(MUTED)
-    const tName = s.team.length > 18 ? s.team.slice(0, 17) + '…' : s.team
-    text(tName, MARGIN + 100, cy + 0.8)
+    setFont('normal', 7.5); setColor(INK_SOFT)
+    text(truncate(s.team, 22), C.team, cy - 0.2)
 
-    // Bar
-    rect(W_PAGE - MARGIN - 80, barW, cy - 2, 4, [...accent, 60], 1)
+    // Bar — coloured fill only, no coloured text
+    rect(C.barStart, BAR_MAX, cy - 3.2, 3.4, PANEL_DARK, 1)
+    rect(C.barStart, barW, cy - 3.2, 3.4, accent, 1)
 
-    // Goals
-    setFont('bold', 11); setColor(goalRgb)
-    text(String(s.goals), W_PAGE - MARGIN, cy + 1, { align: 'right' })
+    setFont('bold', 10.5); setColor(INK)
+    text(String(s.goals), C.goals, cy - 0.1, { align: 'right' })
 
     cy += ROW_H
-    doc.setLineWidth(0.1)
-    doc.setDrawColor(50, 85, 62)
-    doc.line(MARGIN, cy - 0.5, MARGIN + COL, cy - 0.5)
+    hline(MARGIN, cy - 0.8, MARGIN + COL, cy - 0.8, 0.15)
   })
 
   return cy + 4
@@ -268,13 +289,9 @@ function drawLeaderboardSection(doc, h, accent, topScorers, y) {
 export async function generateTeamPDF({ teamName, leagueId, leagueName, leagueColor, fixtures, scorers, venues, standings }) {
   const jsPDF  = await loadJsPDF()
   const doc    = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' })
-  // Was: accentOf(cls) — `cls` was never defined/passed anywhere in this
-  // file, so this threw immediately and silently killed the whole export.
-  // Derive the accent from the league color instead, same as the other
-  // two PDF generators below.
-  const accent = hexToRgb(leagueColor || '#7ecb35')
-  const h      = makeHelpers(doc, accent)
-  const { setFont, setColor, rect, text, line } = h
+  const accent = hexToRgb(leagueColor)
+  const h      = makeHelpers(doc)
+  const { setFont, setColor, rect, text, hline } = h
 
   const teamFixtures = fixtures
     .filter(f => (f.league_id === leagueId) && (f.home_team === teamName || f.away_team === teamName))
@@ -291,173 +308,160 @@ export async function generateTeamPDF({ teamName, leagueId, leagueName, leagueCo
     if (myG > oppG) W++; else if (myG < oppG) L++; else D++
   })
 
-  // Was: `${teamName} · ${clsLabel(cls)}` — clsLabel/cls didn't exist.
   const drawPageHeader = makePageHeader(doc, h, accent, `${teamName}${leagueName ? '  ·  ' + leagueName : ''}`)
   let y = 0
 
   const checkPage = (needed = 20) => {
-    if (y + needed > 275) { doc.addPage(); y = 16; drawPageHeader() }
+    if (y + needed > 272) { doc.addPage(); y = 20; drawPageHeader() }
   }
 
   // Cover
   drawCover(doc, h, accent, teamName, `${leagueName || 'League'} Season Report`)
-  y = 58
+  y = 60
 
-  // Stats row
+  // Stat strip
   if (played.length > 0) {
     const GD = GF - GA
     const stats = [
-      ['P',  played.length, WHITE],
-      ['W',  W,    LIME],
-      ['D',  D,    MUTED],
-      ['L',  L,    DANGER],
-      ['GF', GF,   WHITE],
-      ['GA', GA,   WHITE],
-      ['GD', GD,   GD >= 0 ? LIME : DANGER, GD > 0 ? `+${GD}` : GD],
-      ['Pts',W*3+D, accent],
+      ['P', played.length],
+      ['W', W],
+      ['D', D],
+      ['L', L],
+      ['GF', GF],
+      ['GA', GA],
+      ['GD', GD > 0 ? `+${GD}` : GD],
+      ['PTS', W * 3 + D],
     ]
-    const boxW = COL / stats.length
-    stats.forEach(([lbl, val, rgb, display], i) => {
-      const bx = MARGIN + i * boxW
-      rect(bx, boxW - 1, y, 22, PITCHL, 2)
-      setFont('bold', 14); setColor(rgb)
-      const dispVal = display !== undefined ? String(display) : String(val)
-      text(dispVal, bx + (boxW-1)/2, y + 12, { align: 'center' })
-      setFont('normal', 6.5); setColor(MUTED)
-      text(lbl, bx + (boxW-1)/2, y + 18, { align: 'center' })
+    const gap = 2
+    const boxW = (COL - gap * (stats.length - 1)) / stats.length
+    stats.forEach(([lbl, val], i) => {
+      const bx = MARGIN + i * (boxW + gap)
+      const isPts = lbl === 'PTS'
+      rect(bx, boxW, y, 22, isPts ? tint(accent, 0.16) : PANEL, 2)
+      hline(bx, y, bx, y + 22, 0, LINE)
+      setFont('bold', 15); setColor(INK)
+      text(String(val), bx + boxW / 2, y + 12, { align: 'center' })
+      setFont('normal', 6.5); setColor(INK_SOFT)
+      text(lbl, bx + boxW / 2, y + 18.5, { align: 'center' })
     })
-    y += 28
+    y += 30
   }
 
-  // ── LEAGUE STANDING ─────────────────────────────────────────
+  // LEAGUE STANDING
   if (standings && standings.length > 0) {
-    checkPage(standings.length * 9 + 30)
+    checkPage(standings.length * 10 + 34)
     y = drawStandingsSection(doc, h, accent, standings, y, teamName)
-    y += 6
+    y += 4
   }
 
-  // ── RESULTS ─────────────────────────────────────────────────
+  // RESULTS
   if (played.length > 0) {
-    checkPage(20)
-    setFont('bold', 9); setColor(accent)
-    text('RESULTS', MARGIN, y)
-    doc.setLineWidth(0.3); doc.setDrawColor(...accent)
-    doc.line(MARGIN, y + 1, MARGIN + COL, y + 1)
-    y += 7
+    checkPage(24)
+    y = drawSectionTitle(doc, h, accent, 'RESULTS', y)
 
-    const C = { rnd: MARGIN+4, date: MARGIN+18, opp: MARGIN+50, score: MARGIN+120, venue: MARGIN+140 }
-    setFont('bold', 7); setColor(MUTED)
-    text('RND', C.rnd, y); text('DATE', C.date, y); text('OPPONENT', C.opp, y)
-    text('SCORE', C.score, y); text('VENUE', C.venue, y)
-    doc.setLineWidth(0.2); doc.line(MARGIN, y+1.5, MARGIN+COL, y+1.5)
-    y += 6
+    const C = { rnd: MARGIN + 5, date: MARGIN + 18, opp: MARGIN + 50, score: MARGIN + 128, venue: MARGIN + 150 }
+    setFont('bold', 6.8); setColor(INK_FAINT)
+    text('RND', C.rnd, y, { align: 'center' }); text('DATE', C.date, y); text('OPPONENT', C.opp, y)
+    text('SCORE', C.score, y, { align: 'center' }); text('VENUE', C.venue, y)
+    hline(MARGIN, y + 2, MARGIN + COL, y + 2, 0.3)
+    y += 8
 
     played.forEach(f => {
-      checkPage(10)
+      checkPage(14)
       const isHome  = f.home_team === teamName
       const opp     = isHome ? f.away_team : f.home_team
       const myG     = isHome ? f.home_goals : f.away_goals
       const oppG    = isHome ? f.away_goals : f.home_goals
       const outcome = myG > oppG ? 'W' : myG < oppG ? 'L' : 'D'
-      const outRgb  = outcome === 'W' ? LIME : outcome === 'L' ? DANGER : MUTED
+      const outFill = outcome === 'W' ? WIN : outcome === 'L' ? LOSS : DRAW
       const venue   = venues.find(v => v.id === f.venue_id)
 
-      rect(MARGIN, COL, y-4.5, 9, PITCHM, 1)
-      rect(MARGIN, 8, y-3.5, 7, outRgb, 1)
-      setFont('bold', 8); setColor(outcome === 'W' ? PITCH : WHITE)
-      text(outcome, MARGIN+4, y+0.5, { align: 'center' })
-
-      setFont('normal', 7.5); setColor(MUTED); text(`R${f.round}`, C.rnd+1, y+0.5)
-      setFont('normal', 8);   setColor(WHITE);  text(fmtDate(f.match_date), C.date, y+0.5)
-      text(opp.length > 22 ? opp.slice(0,21)+'…' : opp, C.opp, y+0.5)
-      setFont('bold', 9); setColor(outRgb)
-      text(`${myG} – ${oppG}`, C.score+10, y+0.5, { align: 'center' })
-      setFont('normal', 7); setColor(MUTED)
-      text(venue ? venue.name : '—', C.venue, y+0.5)
-
       const fScorers = scorers.filter(s => s.fixture_id === f.id && s.team_name === teamName && !s.own_goal && s.player_name)
-      if (fScorers.length > 0) {
-        y += 9; checkPage(6)
-        setFont('normal', 6.5); setColor(MUTED)
-        text('   ' + fScorers.map(s => `${s.player_name}${s.goals > 1 ? ` (${s.goals})` : ''}`).join('  ·  '), C.opp, y+0.5)
-        y += 6
-      } else { y += 9 }
+      const rowH = fScorers.length > 0 ? 15 : 10
 
-      doc.setLineWidth(0.1); doc.setDrawColor(50,85,62)
-      doc.line(MARGIN, y-0.5, MARGIN+COL, y-0.5)
+      rect(MARGIN, COL, y - 5.5, rowH, PANEL, 1)
+      rect(C.rnd - 3.4, 6.8, y - 4.3, 6.8, outFill, 3.4)
+      setFont('bold', 7.5); setColor(WHITE)
+      text(outcome, C.rnd, y - 0.2, { align: 'center' })
+
+      setFont('normal', 7); setColor(INK_FAINT); text(`R${f.round}`, C.rnd, y + 4.4, { align: 'center' })
+      setFont('normal', 8.5); setColor(INK); text(fmtDate(f.match_date), C.date, y - 0.1)
+      text(truncate(opp, 26), C.opp, y - 0.1)
+      setFont('bold', 9.5); setColor(INK)
+      text(`${myG} – ${oppG}`, C.score, y - 0.1, { align: 'center' })
+      setFont('normal', 7.5); setColor(INK_SOFT)
+      text(truncate(venue ? venue.name : '—', 20), C.venue, y - 0.1)
+
+      if (fScorers.length > 0) {
+        setFont('normal', 6.8); setColor(INK_FAINT)
+        text(fScorers.map(s => `${s.player_name}${s.goals > 1 ? ` (${s.goals})` : ''}`).join('   ·   '), C.opp, y + 5)
+      }
+
+      y += rowH
+      hline(MARGIN, y - 0.7, MARGIN + COL, y - 0.7, 0.15)
     })
     y += 4
   }
 
-  // ── UPCOMING ─────────────────────────────────────────────────
+  // UPCOMING
   if (upcoming.length > 0) {
-    checkPage(20)
-    setFont('bold', 9); setColor(accent)
-    text('UPCOMING FIXTURES', MARGIN, y)
-    doc.setLineWidth(0.3); doc.setDrawColor(...accent)
-    doc.line(MARGIN, y+1, MARGIN+COL, y+1)
-    y += 7
+    checkPage(24)
+    y = drawSectionTitle(doc, h, accent, 'UPCOMING FIXTURES', y)
 
-    const C = { rnd: MARGIN+4, date: MARGIN+18, time: MARGIN+56, opp: MARGIN+78, venue: MARGIN+140 }
-    setFont('bold', 7); setColor(MUTED)
-    text('RND', C.rnd, y); text('DATE', C.date, y); text('TIME', C.time, y)
+    const C = { rnd: MARGIN + 5, date: MARGIN + 18, time: MARGIN + 56, opp: MARGIN + 78, venue: MARGIN + 142 }
+    setFont('bold', 6.8); setColor(INK_FAINT)
+    text('RND', C.rnd, y, { align: 'center' }); text('DATE', C.date, y); text('TIME', C.time, y)
     text('OPPONENT', C.opp, y); text('VENUE', C.venue, y)
-    doc.setLineWidth(0.2); doc.line(MARGIN, y+1.5, MARGIN+COL, y+1.5)
-    y += 6
+    hline(MARGIN, y + 2, MARGIN + COL, y + 2, 0.3)
+    y += 8
 
     upcoming.forEach(f => {
-      checkPage(10)
+      checkPage(11)
       const isHome = f.home_team === teamName
       const opp    = isHome ? f.away_team : f.home_team
       const venue  = venues.find(v => v.id === f.venue_id)
-      const haRgb  = isHome ? accent : [80,100,90]
 
-      rect(MARGIN, COL, y-4.5, 9, PITCHM, 1)
-      rect(MARGIN, 8, y-3.5, 7, haRgb, 1)
-      // Was: cls === 'first' ? PITCH : WHITE — `cls` didn't exist.
-      // Home badge uses the league accent background, so pick readable
-      // text color against it; away badge is always the neutral gray above.
-      setFont('bold', 7); setColor(isHome ? WHITE : WHITE)
-      text(isHome ? 'H' : 'A', MARGIN+4, y+0.5, { align: 'center' })
+      rect(MARGIN, COL, y - 5.5, 10, PANEL, 1)
+      rect(C.rnd - 3.4, 6.8, y - 4.3, 6.8, isHome ? accent : PANEL_DARK, 3.4)
+      setFont('bold', 7); setColor(isHome ? WHITE : INK_SOFT)
+      text(isHome ? 'H' : 'A', C.rnd, y - 0.2, { align: 'center' })
 
-      setFont('normal', 7.5); setColor(MUTED);  text(`R${f.round}`, C.rnd+1, y+0.5)
-      setFont('normal', 8);   setColor(WHITE);   text(fmtDate(f.match_date), C.date, y+0.5)
-      setColor(f.match_time ? WHITE : MUTED);    text(fmtTime(f.match_time), C.time, y+0.5)
-      setColor(WHITE); text(opp.length > 22 ? opp.slice(0,21)+'…' : opp, C.opp, y+0.5)
-      setFont('normal', 7); setColor(MUTED); text(venue ? venue.name : '—', C.venue, y+0.5)
+      setFont('normal', 7); setColor(INK_FAINT); text(`R${f.round}`, C.rnd, y + 4.4, { align: 'center' })
+      setFont('normal', 8.5); setColor(INK); text(fmtDate(f.match_date), C.date, y - 0.1)
+      setColor(f.match_time ? INK : INK_FAINT); text(fmtTime(f.match_time), C.time, y - 0.1)
+      setColor(INK); text(truncate(opp, 26), C.opp, y - 0.1)
+      setFont('normal', 7.5); setColor(INK_SOFT); text(truncate(venue ? venue.name : '—', 22), C.venue, y - 0.1)
 
-      y += 9
-      doc.setLineWidth(0.1); doc.setDrawColor(50,85,62)
-      doc.line(MARGIN, y-0.5, MARGIN+COL, y-0.5)
+      y += 10
+      hline(MARGIN, y - 0.7, MARGIN + COL, y - 0.7, 0.15)
     })
   }
 
-  drawFooters(doc, h, accent)
+  drawFooters(doc, h)
   const safe = teamName.replace(/[^a-z0-9]/gi, '_')
-  doc.save(`${safe}_${(leagueName||'league').replace(/[^a-z0-9]/gi,'_')}_report.pdf`)
+  doc.save(`${safe}_${(leagueName || 'league').replace(/[^a-z0-9]/gi, '_')}_report.pdf`)
 }
-
 // ═══════════════════════════════════════════════════════════════
 //  2.  STANDINGS PDF
 // ═══════════════════════════════════════════════════════════════
 export async function generateStandingsPDF({ leagueName, leagueColor, standings }) {
   const jsPDF  = await loadJsPDF()
   const doc    = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' })
-  const accent = hexToRgb(leagueColor || '#7ecb35')
-  const h      = makeHelpers(doc, accent)
+  const accent = hexToRgb(leagueColor)
+  const h      = makeHelpers(doc)
 
   drawCover(doc, h, accent, 'League Standings', `${leagueName || 'League'} — Full Table`)
-  let y = 58
+  let y = 60
 
   if (standings.length === 0) {
-    h.setFont('normal', 10); h.setColor(MUTED)
+    h.setFont('normal', 10); h.setColor(INK_SOFT)
     h.text('No standings data available yet.', MARGIN, y + 10)
   } else {
     y = drawStandingsSection(doc, h, accent, standings, y, null)
   }
 
-  drawFooters(doc, h, accent)
-  doc.save(`standings_${(leagueName||'league').replace(/[^a-z0-9]/gi,'_')}.pdf`)
+  drawFooters(doc, h)
+  doc.save(`standings_${(leagueName || 'league').replace(/[^a-z0-9]/gi, '_')}.pdf`)
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -466,19 +470,19 @@ export async function generateStandingsPDF({ leagueName, leagueColor, standings 
 export async function generateLeaderboardPDF({ leagueName, leagueColor, topScorers }) {
   const jsPDF  = await loadJsPDF()
   const doc    = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' })
-  const accent = hexToRgb(leagueColor || '#7ecb35')
-  const h      = makeHelpers(doc, accent)
+  const accent = hexToRgb(leagueColor)
+  const h      = makeHelpers(doc)
 
   drawCover(doc, h, accent, 'Top Goal Scorers', `${leagueName || 'League'} — Golden Boot`)
-  let y = 58
+  let y = 60
 
   if (topScorers.length === 0) {
-    h.setFont('normal', 10); h.setColor(MUTED)
+    h.setFont('normal', 10); h.setColor(INK_SOFT)
     h.text('No scorer data available yet.', MARGIN, y + 10)
   } else {
     y = drawLeaderboardSection(doc, h, accent, topScorers, y)
   }
 
-  drawFooters(doc, h, accent)
-  doc.save(`leaderboard_${(leagueName||'league').replace(/[^a-z0-9]/gi,'_')}.pdf`)
+  drawFooters(doc, h)
+  doc.save(`leaderboard_${(leagueName || 'league').replace(/[^a-z0-9]/gi, '_')}.pdf`)
 }
